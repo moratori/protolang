@@ -66,6 +66,26 @@
    (equal ($tundef.ident a) ($tundef.ident b))))
 
 
+(defgeneric substype (target old new)
+  (:documentation 
+    "target 中の old を new にした新しい target' を返す")
+  (:method ((target $tint) old new)
+   " $tint が置き換え元となる事はない"
+   target)
+  (:method ((target $tbool) old new)
+   "$tbool が置き換え元になることはない"
+   target))
+
+
+(defmethod substype ((target $tundef) (old $tundef) new)
+  (if (type= target old) new target))
+
+(defmethod substtype ((target $tfunc) (old $tfunc) new)
+  ($tfunc 
+    (substype ($tfunc.domain target) old new)
+    (substype ($tfunc.range target) old new)))
+
+
 (defgeneric typecheck (obj env)
   (:documentation 
     "obj が整合的に型付けされるかを判定して 
@@ -84,47 +104,87 @@
     (values res env)))
 
 
+(defun arg-typecheck (args env)
+   "関数呼び出しの引数のリスト args を
+    型環境 env で 判定し、その型のリスト
+    と新しい型環境を返す"
+  (let ((args-type nil))
+    (values 
+      args-type
+      (reduce 
+        (lambda (env arg)
+          (multiple-value-bind (type new) 
+            (typecheck arg env)
+            (setf args-type (nconc args-type (list type))) 
+            new))
+        args
+        :initial-value env))))
+
+
+
+(defun update-env (env old new)
+  "env : ((x . TYPE-1) ...) について
+   (substype TYPE-n old new) した新しい環境を返す"
+  (mapcar 
+    (lambda (x)
+      (destructuring-bind (v . ty) x
+        (list v (substype ty old new)))) 
+    env))
+
+
+(defmethod typecheck ((obj $special) env)
+  (let ((ident ($special.ident obj)))
+    (cond 
+      ((string= ident "if")
+       (multiple-value-bind (args-type new-env)
+         (arg-typecheck ($special.exprs obj) env)
+         (destructuring-bind (contype thentype elsetype)
+           args-type
+           
+           (values thentype new-env)
+           ))))))
+
+
 (defmethod typecheck ((obj $call) env)
   (let ((ftype (lookup ($call.ident obj) 
                        (append env *primitive-function-type*)))
-        (args ($call.exprs obj))
-        (args-type nil))
+        (args ($call.exprs obj)))
 
     (unless (typep ftype '$tfunc)
-      (error "function type required")) 
+      (error "function type required for function call")) 
 
-    (let ((now-env 
-            (reduce 
-              (lambda (env arg)
-                (multiple-value-bind (type new) 
-                  (typecheck arg env)
-                  (setf args-type (nconc args-type (list type)))
-                  new))
-              args
-              :initial-value env)))
+    (multiple-value-bind (args-type now-env) 
+      (arg-typecheck args env)
       
-      (reduce 
+      #|
+      | 以下の reduce で関数呼び出しが行われた後の型を求める
+      | ftype : Int -> Int  , arg : Int  => Int
+      | ftype : Int -> Int  , arg : α    => Int (ただし型環境を更新[Int/α])
+      | ftype : α   -> α    , arg : Int  => Int 
+      |#
+      (values
+       (reduce 
         (lambda (rtype at) 
           (let ((domain ($tfunc.domain rtype)))
             #|
             | at が α  で domain が Int とかだったら
             | Int/α  の書き換え規則で now-env を書き換えないといけない
               at が α　型であることしか意図してないけど
-              rtype (関数型) だって α ->α  みたいな場合もありうるけどもそれは意図していない
+              rtype (関数型) が α ->α  みたいな場合もありうるけどもそれは意図していない
             |#
             (cond 
               ((type= domain at)
                ($tfunc.range rtype))
-              (t )
-              )
-            )
-          )
+              ((typep domain '$tundef)
+               (substype ($tfunc.range rtype) domain at))
+              ((typep at '$tundef)
+               (setf now-env (update-env now-env at domain))
+               ($tfunc.range rtype))
+              (t 
+               (error "unexpected error during function call type checking")))))
         args-type
-        :initial-value ftype
-        )
-      )  
-    )
-  )
+        :initial-value ftype)
+       now-env))))
 
 
 
