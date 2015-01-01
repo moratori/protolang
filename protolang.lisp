@@ -59,7 +59,8 @@
 (defgeneric type= (a b)
   (:documentation
     "型オブジェクトが等しいか判定する
-     型変数に関してはidentが等しいかをチェックする")
+     型変数に関してはidentが等しいかをチェックする
+     $tundef型のα と$tundef型のβ は等しくならない")
   (:method ((a t) (b t)) 
    (typep b (type-of a)))
   (:method ((a $tundef) (b $tundef))
@@ -68,7 +69,8 @@
 
 (defgeneric substype (target old new)
   (:documentation 
-    "target 中の old を new にした新しい target' を返す")
+    "target 中の old を new にした新しい target' を返す
+     oldとtype=となるものをnewにおきかえる")
   (:method ((target $tint) old new)
    " $tint が置き換え元となる事はない"
    target)
@@ -80,7 +82,7 @@
 (defmethod substype ((target $tundef) (old $tundef) new)
   (if (type= target old) new target))
 
-(defmethod substtype ((target $tfunc) (old $tfunc) new)
+(defmethod substype ((target $tfunc) (old $tundef) new)
   ($tfunc 
     (substype ($tfunc.domain target) old new)
     (substype ($tfunc.range target) old new)))
@@ -121,7 +123,6 @@
         :initial-value env))))
 
 
-
 (defun update-env (env old new)
   "env : ((x . TYPE-1) ...) について
    (substype TYPE-n old new) した新しい環境を返す"
@@ -130,6 +131,62 @@
       (destructuring-bind (v . ty) x
         (list v (substype ty old new)))) 
     env))
+
+(defun unify-type (type rule)
+  "型type を rule: ((α  . β ) ...) で書き換える"
+  (reduce 
+    (lambda (type each)
+      (destructuring-bind (old . new) each
+        (substype type old new)))
+    rule
+    :initial-value type))
+
+
+(defun unify-env (env rule)
+  "env: ((x . α ) ...) を
+   rule: ((α  . β ) ...) で書き換えた新しい envを返す"
+  (reduce 
+    (lambda (env each)
+      (destructuring-bind (old . new) each
+        (update-env env old new)))
+    rule
+    :initial-value env))
+
+
+(defgeneric match (type1 type2) 
+  (:documentation
+    "２つの型type1 type2が等しくなるような単一化子を求める
+     (($tundef . new) ...)
+
+     なぜ必要となるか
+     if式は1つのbooleanを返す式と、型の等しい式exp1,exp2をとる
+     1つ目の式が boolean を返すか否かは簡単に判別可能
+     exp1とexp2は共に等しい型でなければいけない
+     exp1,exp2の型がそれぞれ関数型でなければ簡単
+     f = (x) => 1 : α ->Int
+     g = (y) => 2 : β ->Int
+     (f) =>
+      (g) => if true f g
+     みたいな時は f とgの型をそれぞれ再帰的にみて[α /β ]を見つけなければならない")
+
+  (:method ((type1 t) (type2 t))
+   (error "type unmateched"))
+  (:method ((type1 $tint) (type2 $tint))
+   nil)
+  (:method ((type1 $tbool) (type2 $tbool))
+   nil)
+  (:method ((type1 $tundef) (type2 t))
+   ;; ここで出現検査を行うべきかもしれない
+   (list (list type1 type2)))
+  (:method ((type1 t) (type2 $tundef))
+   (match type2 type1)))
+
+
+(defmethod match ((type1 $tfunc) (type2 $tfunc))
+  (append 
+    (match ($tfunc.domain type1) ($tfunc.domain type2))
+    (match ($tfunc.range type1) ($tfunc.range type2))))
+
 
 
 (defmethod typecheck ((obj $special) env)
@@ -140,9 +197,15 @@
          (arg-typecheck ($special.exprs obj) env)
          (destructuring-bind (contype thentype elsetype)
            args-type
+
+           (unless 
+             (type= contype ($tbool))
+             (error "if: condition type is boolean"))
            
-           (values thentype new-env)
-           ))))))
+           (let ((rule (match thentype elsetype)))
+             (values
+               (unify-type thentype rule)
+               (unify-env new-env rule)))))))))
 
 
 (defmethod typecheck ((obj $call) env)
@@ -187,11 +250,9 @@
        now-env))))
 
 
-
-
-
-
-
+(defmethod typecheck ((obj $fn) env)
+  
+  )
 
 
 
