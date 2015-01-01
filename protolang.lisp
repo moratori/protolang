@@ -19,6 +19,11 @@
                  (:conc-name $var.))
   (value "" :type string))
 
+(defstruct ($typedvar (:constructor $typedvar (var type))
+                      (:conc-name $typedvar.))
+  (var nil :type $var)
+  (type nil (or null $tint $tbool $tundef $tfunc)))
+
 
 (defstruct ($call (:constructor $call (ident exprs))
                   (:conc-name $call.))
@@ -30,10 +35,12 @@
   (ident "" :type string)
   (exprs nil :type list))
 
-(defstruct ($fn (:constructor $fn (argument rtype body)))
-  (argument nil :type list)
+(defstruct ($fn (:constructor $fn (arguments rtype body))
+                (:conc-name $fn.))
+  "arguments is list of $typedvar"
+  (arguments nil :type list)
   (rtype nil :type (or nil $tint $tbool $tfunc))
-  (body nil :type (or $call $special $fn)))
+  (body nil :type (or $call $special $fn $integer $boolean $var)))
 
 (defstruct ($def (:constructor $def (name fn)))
   name fn)
@@ -53,6 +60,7 @@
 
 
 (defun lookup (key table)
+  (assert (typep key 'string))
   (cdr (assoc key table :test #'string=)))
 
 
@@ -250,9 +258,45 @@
        now-env))))
 
 
+(defun make-env (arguments)
+  " lambda 式の仮引数から環境をつくる
+    型が指定されていない場合は一意な型変数を割り当てる"
+  (mapcar 
+    (lambda (x)
+      (let ((var ($typedvar.var x))
+            (type ($typedvar.type x)))
+        (cons ($var.value var)
+              (if (null type) 
+                ($tundef (symbol-name (gensym "tv")))
+                type))))
+    arguments))
+
+(defun make-function-type (argenv rtype)
+  (if (null argenv) rtype
+    (destructuring-bind (_ . type) (car argenv)
+      (declare (ignore _))
+      ($tfunc type (make-function-type (cdr argenv) rtype)))))
+
 (defmethod typecheck ((obj $fn) env)
-  
-  )
+  (let* ((argenv  (make-env ($fn.arguments obj)))
+         (env (append argenv env))
+         (typedresult ($fn.rtype obj))
+         (expr ($fn.body obj)))
+    (when (null argenv)
+      (error "can't make constant function"))
+    (multiple-value-bind (exprtype new-env)
+      (typecheck expr env)
+      (unless (type= typedresult exprtype)
+        (error "type inconsistency: declare = ~A , but inferenced = ~A" 
+               typedresult exprtype))
+      (values 
+        (make-function-type argenv exprtype)
+        env))))
+
+
+
+
+
 
 
 
