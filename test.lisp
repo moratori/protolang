@@ -14,6 +14,7 @@
    ;; true :: Boolean
    (assert-true (check ($boolean "true") ($tbool))))
 
+
 (define-test special-if
    ;; if true 1 3 :: Int
    (assert-true 
@@ -31,12 +32,16 @@
    (assert-true 
      (check ($special "if" (list ($call "!" (list ($call "!" (list ($call "==" (list ($integer "1") ($integer "2"))))))) ($integer "1") ($integer "3"))) ($tint))))
 
+
 (define-test fn
+
   
    ;; (x:Int) => x :: Int -> Int
    (assert-true (check ($fn (list ($typedvar ($var "x") ($tint)))  nil ($var "x")) ($tfunc ($tint) ($tint))))
    ;; (x) => x + 1 :: Int -> Int
    (assert-true (check ($fn (list ($typedvar ($var "x") nil))  nil ($call "+" (list ($var "x") ($integer "1")))) ($tfunc ($tint) ($tint))))
+   ;; (x) => (+) x :: Int -> (Int -> Int)
+   (assert-true (check ($fn (list ($typedvar ($var "x") nil)) nil ($call "+" (list ($var "x") ))) ($tfunc ($tint) ($tfunc ($tint) ($tint)))))
    ;; (x):Int => x+1 :: Int -> Int
    (assert-true (check ($fn (list ($typedvar ($var "x") nil))  ($tint) ($call "+" (list ($var "x") ($integer "1")))) ($tfunc ($tint) ($tint))))
    ;; (f:(Int->Bool)) => if f[1] f (x) => x == 5 :: Int -> Bool
@@ -44,16 +49,38 @@
      (check ($fn (list ($typedvar ($var "f") ($tfunc ($tint) ($tbool)))) nil 
                  ($special "if" (list ($call "f" (list ($integer "1")))  ($var "f") ($fn (list ($typedvar ($var "x") nil)) nil ($call "==" (list ($var "x") ($integer "5")))) ) )) 
             ($tfunc ($tfunc ($tint) ($tbool)) ($tfunc ($tint) ($tbool)))))
+   ;; (x) => (y) => x + y :: Int -> (Int -> Int)
+   (assert-true 
+     (check ($fn (list ($typedvar ($var "x") nil )) nil 
+                 ($fn (list ($typedvar ($var "y") nil)) nil
+                      ($call "+" (list ($var "x") ($var "y")))))
+            ($tfunc ($tint) ($tfunc ($tint) ($tint)))))
+   ;; (x:Int) => (x:Bool) => !x 
+   (assert-true
+     (check ($fn (list ($typedvar ($var "x") ($tint))) nil
+                 ($fn (list ($typedvar ($var "x") ($tbool))) nil
+                      ($call "!" (list ($var "x")))))
+            ($tfunc ($tint) ($tfunc ($tbool) ($tbool)))))
+   ;; (x:Int) => (x) => ! x
+   (assert-true
+     (check ($fn (list ($typedvar ($var "x") ($tint))) nil
+                 ($fn (list ($typedvar ($var "x") ($tbool))) nil
+                      ($call "!" (list ($var "x")))))
+            ($tfunc ($tint) ($tfunc ($tbool) ($tbool)))))
+   
+
+   #|
    ;; (f) => if f[1] f (x) => x == 5 :: Int -> Bool
    (assert-true 
      (check ($fn (list ($typedvar ($var "f") nil )) nil 
                  ($special "if" (list ($call "f" (list ($integer "1")))  ($var "f") ($fn (list ($typedvar ($var "x") nil)) nil ($call "==" (list ($var "x") ($integer "5")))) ) )) 
             ($tfunc ($tfunc ($tint) ($tbool)) ($tfunc ($tint) ($tbool)))))
+   |#
    
    )
 
 
-(let ((result (run-tests '(literal special-if fn))))
+(let ((result (run-tests '(fn))))
   (print-errors result)
   (print-failures result)
   )

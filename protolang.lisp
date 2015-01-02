@@ -339,6 +339,8 @@
       |#
       (typecheck expr env)
 
+      ;(print new-env)
+
       (unless (or (null typedresult) (type= typedresult exprtype))
         (error "type inconsistency: declare = ~A , but inferenced = ~A" 
                typedresult exprtype))
@@ -347,7 +349,7 @@
         (make-function-type 
           (unify-env-with-env argenv new-env)
           exprtype)
-        init-env))))
+        (print new-env)))))
 
 
 (defun typecheck-toplevel (obj)
