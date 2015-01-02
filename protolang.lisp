@@ -4,9 +4,10 @@
   ident)
 (defstruct ($tint (:constructor $tint)))
 (defstruct ($tbool(:constructor $tbool)))
-(defstruct ($tfunc (:constructor $tfunc (domain range)))
-  (domain nil :type (or $tint $tbool $tfunc))
-  (range nil  :type (or $tint $tbool $tfunc)))
+(defstruct ($tfunc (:constructor $tfunc (domain range))
+                   (:conc-name $tfunc.))
+  (domain nil :type (or $tint $tbool $tfunc $tundef))
+  (range nil  :type (or $tint $tbool $tfunc $tundef)))
 
 
 (defstruct ($integer (:constructor $integer (value)))
@@ -22,7 +23,7 @@
 (defstruct ($typedvar (:constructor $typedvar (var type))
                       (:conc-name $typedvar.))
   (var nil :type $var)
-  (type nil (or null $tint $tbool $tundef $tfunc)))
+  (type nil :type (or null $tint $tbool $tundef $tfunc)))
 
 
 (defstruct ($call (:constructor $call (ident exprs))
@@ -39,7 +40,7 @@
                 (:conc-name $fn.))
   "arguments is list of $typedvar"
   (arguments nil :type list)
-  (rtype nil :type (or nil $tint $tbool $tfunc))
+  (rtype nil :type (or null $tint $tbool $tfunc $tundef))
   (body nil :type (or $call $special $fn $integer $boolean $var)))
 
 (defstruct ($def (:constructor $def (name fn)))
@@ -48,14 +49,15 @@
 
 (defvar *primitive-function-type*
   (list 
-    (list "+"   ($tfunc ($tint)  ($tfunc ($tint) ($tint))))
-    (list "-"   ($tfunc ($tint)  ($tfunc ($tint) ($tint))))
-    (list "*"   ($tfunc ($tint)  ($tfunc ($tint) ($tint))))
-    (list "%"   ($tfunc ($tint)  ($tfunc ($tint) ($tint)) ))
-    (list "<"   ($tfunc ($tbool) ($tfunc ($tint) ($tint))))
-    (list "=="  ($tfunc ($tbool) ($tfunc ($tint) ($tint)) ))
-    (list "&&"  ($tfunc ($tbool) ($tfunc ($tbool) ($tbool)) ))
-    (list "||"  ($tfunc ($tbool) ($tfunc ($tbool) ($tbool)) )))
+    (cons "+"   ($tfunc ($tint)  ($tfunc ($tint) ($tint))))
+    (cons "-"   ($tfunc ($tint)  ($tfunc ($tint) ($tint))))
+    (cons "*"   ($tfunc ($tint)  ($tfunc ($tint) ($tint))))
+    (cons "%"   ($tfunc ($tint)  ($tfunc ($tint) ($tint)) ))
+    (cons "<"   ($tfunc ($tint)  ($tfunc ($tint) ($tbool))))
+    (cons "=="  ($tfunc ($tint)  ($tfunc ($tint) ($tbool)) ))
+    (cons "&&"  ($tfunc ($tbool) ($tfunc ($tbool) ($tbool)) ))
+    (cons "||"  ($tfunc ($tbool) ($tfunc ($tbool) ($tbool)) ))
+    (cons "!"   ($tfunc ($tbool) ($tbool))))
   "組み込みで用意する関数の型の定義")
 
 
@@ -120,7 +122,6 @@
     と新しい型環境を返す"
   (let ((args-type nil))
     (values 
-      args-type
       (reduce 
         (lambda (env arg)
           (multiple-value-bind (type new) 
@@ -128,7 +129,8 @@
             (setf args-type (nconc args-type (list type))) 
             new))
         args
-        :initial-value env))))
+        :initial-value env)
+      args-type)))
 
 
 (defun update-env (env old new)
@@ -201,7 +203,7 @@
   (let ((ident ($special.ident obj)))
     (cond 
       ((string= ident "if")
-       (multiple-value-bind (args-type new-env)
+       (multiple-value-bind (new-env args-type)
          (arg-typecheck ($special.exprs obj) env)
          (destructuring-bind (contype thentype elsetype)
            args-type
@@ -222,9 +224,9 @@
         (args ($call.exprs obj)))
 
     (unless (typep ftype '$tfunc)
-      (error "function type required for function call")) 
+      (error "function type required for function call: ~A" ftype)) 
 
-    (multiple-value-bind (args-type now-env) 
+    (multiple-value-bind (now-env args-type) 
       (arg-typecheck args env)
       
       #|
@@ -286,7 +288,8 @@
       (error "can't make constant function"))
     (multiple-value-bind (exprtype new-env)
       (typecheck expr env)
-      (unless (type= typedresult exprtype)
+      (declare (ignore new-env))
+      (unless (or (null typedresult) (type= typedresult exprtype))
         (error "type inconsistency: declare = ~A , but inferenced = ~A" 
                typedresult exprtype))
       (values 
@@ -294,6 +297,8 @@
         env))))
 
 
+(defun typecheck-toplevel (obj)
+  (typecheck obj nil))
 
 
 
