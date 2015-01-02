@@ -47,7 +47,7 @@
 
 (defstruct ($call (:constructor $call (ident exprs))
                   (:conc-name $call.))
-  (ident "" :type string)
+  (ident nil)
   (exprs nil :type list))
 
 (defstruct ($special (:constructor $special (ident exprs))
@@ -266,10 +266,19 @@
                (unify-env-with-rule new-env rule)))))))))
 
 
+(defun lookup-function-type (obj env)
+  (if (typep ($call.ident obj) 'string)
+    (values 
+      (lookup ($call.ident obj) 
+              (append env *primitive-function-type*))
+      env)
+    (typecheck ($call.ident obj) env)))
+
+
 (defmethod typecheck ((obj $call) env)
-  (let ((ftype (lookup ($call.ident obj) 
-                       (append env *primitive-function-type*)))
-        (args ($call.exprs obj)))
+  (let ((args ($call.exprs obj)))
+    (multiple-value-bind (ftype env)
+    (lookup-function-type obj env)
 
     (unless (typep ftype '$tfunc)
       (error "function type required for function call: ~A" ftype)) 
@@ -282,6 +291,7 @@
       | ftype : Int -> Int  , arg : Int  => Int
       | ftype : Int -> Int  , arg : α    => Int (ただし型環境を更新[Int/α])
       | ftype : α   -> α    , arg : Int  => Int 
+      | ftype : α           , arg : Int  => β   (ただし型環境を更新[Int->β /α ])
       |#
       (values
        (reduce 
@@ -305,7 +315,9 @@
                (error "unexpected error during function call type checking")))))
         args-type
         :initial-value ftype)
-       now-env))))
+       now-env)))
+    )
+  )
 
 
 (defun make-env (arguments)
