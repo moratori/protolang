@@ -249,14 +249,18 @@
       ((string= ident "if")
        (multiple-value-bind (new-env args-type)
          (arg-typecheck ($special.exprs obj) env)
-         (destructuring-bind (contype thentype elsetype)
-           args-type
+         (destructuring-bind (contype thentype elsetype) args-type
 
-           (unless 
-             (type= contype ($tbool))
+           (unless (or (typep contype '$tundef) (type= contype ($tbool)))
              (error "if: condition type is boolean"))
-           
-           (let ((rule (match thentype elsetype)))
+ 
+           (let ((new-env 
+                   (if (typep contype '$tundef) 
+                     (update-env new-env contype ($tbool))
+                     new-env))
+                 ;; contype が 未定の場合は new-env 中のcontypeを bool にした
+                 ;; 新しい型環境を new-env としている
+                 (rule (match thentype elsetype)))
              (values
                (unify-type-with-rule thentype rule)
                (unify-env-with-rule new-env rule)))))))))
@@ -339,7 +343,6 @@
       |#
       (typecheck expr env)
 
-      ;(print new-env)
 
       (unless (or (null typedresult) (type= typedresult exprtype))
         (error "type inconsistency: declare = ~A , but inferenced = ~A" 
@@ -349,7 +352,7 @@
         (make-function-type 
           (unify-env-with-env argenv new-env)
           exprtype)
-        (print new-env)))))
+        new-env))))
 
 
 (defun typecheck-toplevel (obj)

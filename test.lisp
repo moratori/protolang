@@ -36,6 +36,8 @@
 (define-test fn
 
   
+   ;; (x) => if x 1 2
+   (assert-true (check ($fn (list ($typedvar ($var "x") nil))  nil ($special "if" (list ($var "x") ($integer "1") ($integer "2")))) ($tfunc ($tbool) ($tint))))
    ;; (x:Int) => x :: Int -> Int
    (assert-true (check ($fn (list ($typedvar ($var "x") ($tint)))  nil ($var "x")) ($tfunc ($tint) ($tint))))
    ;; (x) => x + 1 :: Int -> Int
