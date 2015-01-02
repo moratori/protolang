@@ -266,43 +266,68 @@
                (unify-env-with-rule new-env rule)))))))))
 
 
-(defun lookup-function-type (obj env)
-  (if (typep ($call.ident obj) 'string)
-    (values 
-      (lookup ($call.ident obj) 
-              (append env *primitive-function-type*))
-      env)
-    (typecheck ($call.ident obj) env)))
 
+(defun inference-function-type (args-type)
+  "関数の型を引数から推論する
+   x(1,2,bool) みたいな呼ばれ方をしていたら
+   Int -> (Int -> (Bool -> α ))を返す
+   ARG-TYPE1 -> (ARG-TYPE2 -> (ARG-TYPE3 -> (...)))
+   この関数はmake-function-type に酷似しているのでよろしくない"
+  (if (null args-type)
+    ($tundef (symbol-name (gensym "tv")))
+    ($tfunc (car args-type) (inference-function-type (cdr args-type)))))
+
+
+(defun lookup-function-type% (ident ftype args-type env)
+  "lookup-function-typeのヘルパ関数
+   求めた関数型が型変数であったばあいに、引数の型から
+   関数型をもとめる"
+  (if (typep ftype '$tundef)
+    (let ((infered (inference-function-type args-type)))
+      (if (typep ident 'string)
+        (values infered args-type (update-env env ftype infered))
+        (values infered args-type env)))
+    (values ftype args-type env)))
+
+
+(defun lookup-function-type (obj env)
+  "呼び出される関数の型を求める
+   関数の型 , 関数の引数の型 , 型環境を求める"
+  (multiple-value-bind (env args-type)
+    (arg-typecheck ($call.exprs obj) env)
+    (let ((ident ($call.ident obj)))
+      (etypecase ident 
+        (string 
+          (lookup-function-type%
+            ident
+            (lookup ident (append env *primitive-function-type*))
+            args-type
+            env))
+        ($fn
+          (multiple-value-bind (type new-env)
+            (typecheck ident env)
+            (lookup-function-type%
+              ident type args-type new-env)))))))
+ 
 
 (defmethod typecheck ((obj $call) env)
-  (let ((args ($call.exprs obj)))
-    (multiple-value-bind (ftype env)
-    (lookup-function-type obj env)
-
+  (multiple-value-bind (ftype args-type now-env)
+    (lookup-function-type obj env) 
+    
     (unless (typep ftype '$tfunc)
-      (error "function type required for function call: ~A" ftype)) 
+      (error "function type required for function call: ~A" ftype))
+    
+    #|
+    | 以下の reduce で関数呼び出しが行われた後の型を求める
+      ftype : Int -> Int  , arg : Int  => Int
+      ftype : Int -> Int  , arg : α    => Int (ただし型環境を更新[Int/α])
+      ftype : α   -> α    , arg : Int  => Int 
+    |# 
 
-    (multiple-value-bind (now-env args-type) 
-      (arg-typecheck args env)
-      
-      #|
-      | 以下の reduce で関数呼び出しが行われた後の型を求める
-      | ftype : Int -> Int  , arg : Int  => Int
-      | ftype : Int -> Int  , arg : α    => Int (ただし型環境を更新[Int/α])
-      | ftype : α   -> α    , arg : Int  => Int 
-      | ftype : α           , arg : Int  => β   (ただし型環境を更新[Int->β /α ])
-      |#
-      (values
-       (reduce 
+    (values
+      (reduce 
         (lambda (rtype at) 
           (let ((domain ($tfunc.domain rtype)))
-            #|
-            | at が α  で domain が Int とかだったら
-            | Int/α  の書き換え規則で now-env を書き換えないといけない
-              at が α　型であることしか意図してないけど
-              rtype (関数型) が α ->α  みたいな場合もありうるけどもそれは意図していない
-            |#
             (cond 
               ((type= domain at)
                ($tfunc.range rtype))
@@ -315,9 +340,7 @@
                (error "unexpected error during function call type checking")))))
         args-type
         :initial-value ftype)
-       now-env)))
-    )
-  )
+      now-env)))
 
 
 (defun make-env (arguments)
