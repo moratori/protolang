@@ -1,11 +1,30 @@
 
 (defstruct ($tundef (:constructor $tundef (ident))
-                    (:conc-name $tundef.))
+                    (:conc-name $tundef.)
+                    (:print-object
+                      (lambda (obj stream)
+                        (format stream "~A" ($tundef.ident obj)))))
   ident)
-(defstruct ($tint (:constructor $tint)))
-(defstruct ($tbool(:constructor $tbool)))
+
+(defstruct ($tint (:constructor $tint)
+                  (:print-object 
+                    (lambda (obj stream)
+                      (declare (ignore obj))
+                      (format stream "Integer")))))
+
+(defstruct ($tbool (:constructor $tbool)
+                   (:print-object 
+                    (lambda (obj stream)
+                      (declare (ignore obj))
+                      (format stream "Boolean")))))
+
 (defstruct ($tfunc (:constructor $tfunc (domain range))
-                   (:conc-name $tfunc.))
+                   (:conc-name $tfunc.)
+                   (:print-object 
+                    (lambda (obj stream)
+                      (format stream "(~A -> ~A)"
+                              (print-object ($tfunc.domain obj) nil)
+                              (print-object ($tfunc.range obj) nil)))))
   (domain nil :type (or $tint $tbool $tfunc $tundef))
   (range nil  :type (or $tint $tbool $tfunc $tundef)))
 

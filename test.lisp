@@ -5,7 +5,7 @@
 (load "protolang.lisp")
 
 (defun check (obj type)
-  (type= (typecheck-toplevel obj) type))
+  (type= (print (typecheck-toplevel obj)) type))
 
 
 (define-test literal
@@ -44,10 +44,13 @@
      (check ($fn (list ($typedvar ($var "f") ($tfunc ($tint) ($tbool)))) nil 
                  ($special "if" (list ($call "f" (list ($integer "1")))  ($var "f") ($fn (list ($typedvar ($var "x") nil)) nil ($call "==" (list ($var "x") ($integer "5")))) ) )) 
             ($tfunc ($tfunc ($tint) ($tbool)) ($tfunc ($tint) ($tbool)))))
+   ;; (f) => if f[1] f (x) => x == 5 :: Int -> Bool
+   (assert-true 
+     (check ($fn (list ($typedvar ($var "f") nil )) nil 
+                 ($special "if" (list ($call "f" (list ($integer "1")))  ($var "f") ($fn (list ($typedvar ($var "x") nil)) nil ($call "==" (list ($var "x") ($integer "5")))) ) )) 
+            ($tfunc ($tfunc ($tint) ($tbool)) ($tfunc ($tint) ($tbool)))))
    
    )
-
-
 
 
 (let ((result (run-tests '(literal special-if fn))))
