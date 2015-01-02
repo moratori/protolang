@@ -112,7 +112,9 @@
    ;; (f) => if f[1] f (x) => x == 5 :: (Int -> Bool) -> (Int -> Bool)
    (assert-true 
      (check ($fn (list ($typedvar ($var "f") nil )) nil 
-                 ($special "if" (list ($call "f" (list ($integer "1")))  ($var "f") ($fn (list ($typedvar ($var "x") nil)) nil ($call "==" (list ($var "x") ($integer "5")))) ) )) 
+                 ($special "if" (list ($call "f" (list ($integer "1")))  
+                                      ($var "f") 
+                                      ($fn (list ($typedvar ($var "x") nil)) nil ($call "==" (list ($var "x") ($integer "5"))))))) 
             ($tfunc ($tfunc ($tint) ($tbool)) ($tfunc ($tint) ($tbool)))))
    )
 

@@ -298,12 +298,14 @@
     (let ((ident ($call.ident obj)))
       (etypecase ident 
         (string 
+          (print "2")
           (lookup-function-type%
             ident
-            (lookup ident (append env *primitive-function-type*))
+            (print (lookup ident (append env *primitive-function-type*)))
             args-type
             env))
         ($fn
+          (print "1")
           (multiple-value-bind (type new-env)
             (typecheck ident env)
             (lookup-function-type%
@@ -313,6 +315,7 @@
 (defmethod typecheck ((obj $call) env)
   (multiple-value-bind (ftype args-type now-env)
     (lookup-function-type obj env) 
+
     
     (unless (typep ftype '$tfunc)
       (error "function type required for function call: ~A" ftype))
