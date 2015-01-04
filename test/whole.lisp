@@ -125,6 +125,37 @@
    )
 
 
+(define-test def
+   (assert-true 
+     (check 
+       ($def "add" ($fn (list ($typedvar ($var "x") nil)) nil ($call "+" (list ($var "x") ($integer "1")))))
+       ($tfunc ($tint) ($tint))))
+   (assert-true 
+     (check 
+       ($def "fact" ($fn (list ($typedvar ($var "x") ($tint))) ($tint) 
+                         ($special "if" (list ($call "==" (list ($var "x") ($integer "0"))) 
+                                              ($integer "1") 
+                                              ($call "*" (list ($var "x") ($call "fact" (list ($call "-" (list ($var "x") ($integer "1")))))))))))
+       ($tfunc ($tint) ($tint))))
+   (assert-true 
+     (check 
+       ($def "fact" ($fn (list ($typedvar ($var "x") nil)) ($tint) 
+                         ($special "if" (list ($call "==" (list ($var "x") ($integer "0"))) 
+                                              ($integer "1") 
+                                              ($call "*" (list ($var "x") ($call "fact" (list ($call "-" (list ($var "x") ($integer "1")))))))))))
+       ($tfunc ($tint) ($tint))))
+   (assert-error
+     'error
+     (check 
+       ($def "fact" ($fn (list ($typedvar ($var "x") nil))  nil
+                         ($special "if" (list ($call "==" (list ($var "x") ($integer "0"))) 
+                                              ($integer "1") 
+                                              ($call "*" (list ($var "x") ($call "fact" (list ($call "-" (list ($var "x") ($integer "1")))))))))))
+       ($tfunc ($tint) ($tint))))
+   )
+
+
+
 (defun run (tests) 
   (let ((result (run-tests tests)))
     (print-errors result)

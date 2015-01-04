@@ -10,12 +10,12 @@
 (enable-annot-syntax)
 
 @export-structure
-(defstruct ($tundef (:constructor $tundef (ident))
+(defstruct ($tundef (:constructor $tundef ())
                     (:conc-name $tundef.)
                     (:print-object
                       (lambda (obj stream)
                         (format stream "~A" ($tundef.ident obj)))))
-  ident)
+  (ident (symbol-name (gensym "tv"))))
 
 @export-structure
 (defstruct ($tint (:constructor $tint)
@@ -82,7 +82,9 @@
   (body nil :type (or $call $special $fn $integer $boolean $var)))
 
 @export-structure
-(defstruct ($def (:constructor $def (name fn)))
+(defstruct ($def (:constructor $def (name fn))
+                 (:conc-name $def.)
+                 )
   name fn)
 
 

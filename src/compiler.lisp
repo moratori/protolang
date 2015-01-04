@@ -8,4 +8,5 @@
         :protolang.typecheck))
 
 (in-package :prorolang.compiler)
+
 (enable-annot-syntax)

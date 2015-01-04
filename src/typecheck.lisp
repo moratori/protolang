@@ -206,7 +206,7 @@
    ARG-TYPE1 -> (ARG-TYPE2 -> (ARG-TYPE3 -> (...)))
    この関数はmake-function-type に酷似しているのでよろしくない"
   (if (null args-type)
-    ($tundef (symbol-name (gensym "tv")))
+    ($tundef)
     ($tfunc (car args-type) (inference-function-type (cdr args-type)))))
 
 
@@ -285,7 +285,7 @@
             (type ($typedvar.type x)))
         (cons ($var.value var)
               (if (null type) 
-                ($tundef (symbol-name (gensym "tv")))
+                ($tundef)
                 type))))
     arguments))
 
@@ -322,6 +322,25 @@
           exprtype)
         new-env))))
 
+(defmethod typecheck ((obj $def) env)
+  (let* ((name ($def.name obj))
+         (fn   ($def.fn obj))
+         (rtype($fn.rtype fn)))
+    (if rtype 
+      (multiple-value-bind (type new-env)
+        (typecheck fn (acons name ($tfunc ($tundef) rtype) env))
+        (values 
+          type 
+          (acons name type 
+                 (remove-if 
+                   (lambda (x) (string= x name))
+                   new-env
+                   :key #'car))))
+      (multiple-value-bind (type new-env)
+        (typecheck fn env)
+        (values 
+          type 
+          (acons name type new-env))))))
 
 @export
 (defun typecheck-toplevel (obj)
