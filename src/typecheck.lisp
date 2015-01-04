@@ -229,14 +229,12 @@
     (let ((ident ($call.ident obj)))
       (etypecase ident 
         (string 
-          (print "2")
           (lookup-function-type%
             ident
-            (print (lookup ident (append env *primitive-function-type*)))
+            (lookup ident (append env *primitive-function-type*))
             args-type
             env))
         ($fn
-          (print "1")
           (multiple-value-bind (type new-env)
             (typecheck ident env)
             (lookup-function-type%
