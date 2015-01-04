@@ -1,90 +1,20 @@
 
-(defstruct ($tundef (:constructor $tundef (ident))
-                    (:conc-name $tundef.)
-                    (:print-object
-                      (lambda (obj stream)
-                        (format stream "~A" ($tundef.ident obj)))))
-  ident)
 
-(defstruct ($tint (:constructor $tint)
-                  (:print-object 
-                    (lambda (obj stream)
-                      (declare (ignore obj))
-                      (format stream "Integer")))))
+(in-package :cl-user)
+(defpackage :protolang.typecheck
+  (:use :cl
+        :protolang.definition
+        :cl-annot))
+(in-package :protolang.typecheck)
 
-(defstruct ($tbool (:constructor $tbool)
-                   (:print-object 
-                    (lambda (obj stream)
-                      (declare (ignore obj))
-                      (format stream "Boolean")))))
-
-(defstruct ($tfunc (:constructor $tfunc (domain range))
-                   (:conc-name $tfunc.)
-                   (:print-object 
-                    (lambda (obj stream)
-                      (format stream "(~A -> ~A)"
-                              (print-object ($tfunc.domain obj) nil)
-                              (print-object ($tfunc.range obj) nil)))))
-  (domain nil :type (or $tint $tbool $tfunc $tundef))
-  (range nil  :type (or $tint $tbool $tfunc $tundef)))
-
-
-(defstruct ($integer (:constructor $integer (value)))
-  (value "" :type string))
-
-(defstruct ($boolean (:constructor $boolean (value)))
-  (value "" :type string))
-
-(defstruct ($var (:constructor $var (value))
-                 (:conc-name $var.))
-  (value "" :type string))
-
-(defstruct ($typedvar (:constructor $typedvar (var type))
-                      (:conc-name $typedvar.))
-  (var nil :type $var)
-  (type nil :type (or null $tint $tbool $tundef $tfunc)))
-
-
-(defstruct ($call (:constructor $call (ident exprs))
-                  (:conc-name $call.))
-  (ident nil)
-  (exprs nil :type list))
-
-(defstruct ($special (:constructor $special (ident exprs))
-                     (:conc-name $special.))
-  (ident "" :type string)
-  (exprs nil :type list))
-
-(defstruct ($fn (:constructor $fn (arguments rtype body))
-                (:conc-name $fn.))
-  "arguments is list of $typedvar"
-  (arguments nil :type list)
-  (rtype nil :type (or null $tint $tbool $tfunc $tundef))
-  (body nil :type (or $call $special $fn $integer $boolean $var)))
-
-(defstruct ($def (:constructor $def (name fn)))
-  name fn)
-
-
-(defvar *primitive-function-type*
-  (list 
-    (cons "+"   ($tfunc ($tint)  ($tfunc ($tint) ($tint))))
-    (cons "-"   ($tfunc ($tint)  ($tfunc ($tint) ($tint))))
-    (cons "*"   ($tfunc ($tint)  ($tfunc ($tint) ($tint))))
-    (cons "%"   ($tfunc ($tint)  ($tfunc ($tint) ($tint)) ))
-    (cons "<"   ($tfunc ($tint)  ($tfunc ($tint) ($tbool))))
-    (cons "=="  ($tfunc ($tint)  ($tfunc ($tint) ($tbool)) ))
-    (cons "&&"  ($tfunc ($tbool) ($tfunc ($tbool) ($tbool)) ))
-    (cons "||"  ($tfunc ($tbool) ($tfunc ($tbool) ($tbool)) ))
-    (cons "!"   ($tfunc ($tbool) ($tbool))))
-  "組み込みで用意する関数の型の定義")
-
+(enable-annot-syntax)
 
 (defun lookup (key table)
   (assert (typep key 'string))
   (cdr (assoc key table :test #'string=)))
 
 
+@export
 (defgeneric type= (a b)
   (:documentation
     "型オブジェクトが等しいか判定する
@@ -120,6 +50,7 @@
     (substype ($tfunc.range target) old new)))
 
 
+@export
 (defgeneric typecheck (obj env)
   (:documentation 
     "obj が整合的に型付けされるかを判定して 
@@ -393,13 +324,12 @@
         new-env))))
 
 
+@export
 (defun typecheck-toplevel (obj)
+  "typecheckを実行するエントリポイント"
   (typecheck obj nil))
 
-
-
-
-
+ 
 
 
 

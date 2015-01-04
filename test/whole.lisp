@@ -1,11 +1,17 @@
 
-(ql:quickload :lisp-unit)
-(use-package :lisp-unit)
 
-(load "protolang.lisp")
+(in-package :cl-user)
+(defpackage :protolang-test
+  (:use :cl 
+        :lisp-unit
+        :protolang.definition
+        :protolang.typecheck
+        ))
+(in-package :protolang-test)
+
 
 (defun check (obj type)
-  (type= (print (typecheck-toplevel obj)) type))
+  (type= (typecheck-toplevel obj) type))
 
 
 (define-test literal
@@ -119,10 +125,10 @@
    )
 
 
-(let ((result (run-tests '(literal fn special-if call))))
-  (print-errors result)
-  (print-failures result)
-  )
+(defun run (tests) 
+  (let ((result (run-tests tests)))
+    (print-errors result)
+    (print-failures result)))
 
 
 
