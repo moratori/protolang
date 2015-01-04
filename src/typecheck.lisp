@@ -3,6 +3,7 @@
 (in-package :cl-user)
 (defpackage :protolang.typecheck
   (:use :cl
+        :protolang.errors
         :protolang.definition
         :cl-annot))
 (in-package :protolang.typecheck)

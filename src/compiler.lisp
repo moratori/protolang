@@ -3,6 +3,7 @@
 (in-package :cl-user)
 (defpackage :prorolang.compiler 
   (:use :cl :cl-annot :cl-annot.class
+        :protolang.errors
         :protolang.definition
         :protolang.typecheck))
 

@@ -14,7 +14,8 @@
         ((:module "src"
           :serial t
           :components 
-            ((:file "definition")
+            ((:file "errors")
+             (:file "definition")
              (:file "typecheck")
              (:file "grammer")
              (:file "compiler")

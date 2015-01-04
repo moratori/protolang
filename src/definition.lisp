@@ -2,7 +2,9 @@
 
 (in-package :cl-user)
 (defpackage :protolang.definition
-  (:use :cl :cl-annot :cl-annot.class))
+  (:use :cl :cl-annot :cl-annot.class
+        :protolang.errors
+        ))
 (in-package :protolang.definition)
 
 (enable-annot-syntax)
