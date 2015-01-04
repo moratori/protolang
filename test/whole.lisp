@@ -126,10 +126,12 @@
 
 
 (define-test def
+   ;; def add (x) -> x+1
    (assert-true 
      (check 
        ($def "add" ($fn (list ($typedvar ($var "x") nil)) nil ($call "+" (list ($var "x") ($integer "1")))))
        ($tfunc ($tint) ($tint))))
+   ;; def fact (x:Int):Int -> if (x == 0) 1 (n * fact(n-1))
    (assert-true 
      (check 
        ($def "fact" ($fn (list ($typedvar ($var "x") ($tint))) ($tint) 
@@ -137,6 +139,7 @@
                                               ($integer "1") 
                                               ($call "*" (list ($var "x") ($call "fact" (list ($call "-" (list ($var "x") ($integer "1")))))))))))
        ($tfunc ($tint) ($tint))))
+   ;; def fact (x):Int -> if (x == 0) 1 (n * fact(n-1))
    (assert-true 
      (check 
        ($def "fact" ($fn (list ($typedvar ($var "x") nil)) ($tint) 
@@ -144,6 +147,7 @@
                                               ($integer "1") 
                                               ($call "*" (list ($var "x") ($call "fact" (list ($call "-" (list ($var "x") ($integer "1")))))))))))
        ($tfunc ($tint) ($tint))))
+   ;; def fact (x) -> if (x == 0) 1 (n * fact(n-1))
    (assert-error
      'error
      (check 
