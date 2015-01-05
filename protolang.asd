@@ -17,7 +17,7 @@
             ((:file "errors")
              (:file "definition")
              (:file "typecheck")
-             (:file "grammer")
+             (:file "reader")
              (:file "compiler")
              (:file "toplevel")))))
 	

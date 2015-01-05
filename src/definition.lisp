@@ -43,11 +43,15 @@
 
 
 @export-structure
-(defstruct ($integer (:constructor $integer (value)))
+(defstruct ($integer (:constructor $integer (value))
+                     (:conc-name $integer.)
+                     )
   (value "" :type string))
 
 @export-structure
-(defstruct ($boolean (:constructor $boolean (value)))
+(defstruct ($boolean (:constructor $boolean (value))
+                     (:conc-name $boolean.)
+                     )
   (value "" :type string))
 
 @export-structure
@@ -103,9 +107,24 @@
   "組み込みで用意する関数の型の定義")
 
 
+(defpackage :plang-user
+  (:use :cl :cl-annot))
+(in-package :plang-user)
 
+(enable-annot-syntax)
 
-
-
-
+@export
+(defvar *primitive-function*
+  (list 
+    (cons "+"   `(lambda (x) (lambda (y) (+ x y))))
+    (cons "-"   `(lambda (x) (lambda (y) (- x y))))
+    (cons "*"   `(lambda (x) (lambda (y) (* x y))))
+    (cons "%"   `(lambda (x) (lambda (y) (mod x y))))
+    (cons "<"   `(lambda (x) (lambda (y) (< x y))))
+    (cons "=="  `(lambda (x) (lambda (y) (= x y))))
+    (cons "&&"  `(lambda (x) (lambda (y) (and x y))))
+    (cons "||"  `(lambda (x) (lambda (y) (oe x y))))
+    (cons "!"   `(lambda (x) (not x))))
+  "組み込みで用意する関数の実体")
+ 
 

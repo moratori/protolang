@@ -1,17 +1,17 @@
 
 
 (in-package :cl-user)
-(defpackage :protolang-test
+(defpackage :protolang-test.typecheck
   (:use :cl 
         :lisp-unit
         :protolang.definition
         :protolang.typecheck
         ))
-(in-package :protolang-test)
+(in-package :protolang-test.typecheck)
 
 
 (defun check (obj type)
-  (type= (typecheck-toplevel obj) type))
+  (type= (typecheck obj nil) type))
 
 
 (define-test literal

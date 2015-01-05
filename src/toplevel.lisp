@@ -1,11 +1,11 @@
 
 
 (in-package :cl-user)
-(defpackage :prorolang
+(defpackage :protolang
   (:use :cl
         :protolang.errors
         :protolang.definition
-        :protolang.grammer
-        :prorolang.compiler))
+        :protolang.reader
+        :protolang.compiler))
 
-(in-package :prorolang)
+(in-package :protolang)

@@ -16,9 +16,5 @@
         ((:module "test"
           :serial t
           :components 
-            ((:file "whole")))))
-	
-
-
-
-
+            ((:file "typecheck")
+             (:file "compiler")))))

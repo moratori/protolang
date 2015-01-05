@@ -248,7 +248,7 @@
 
     
     (unless (typep ftype '$tfunc)
-      (error "function type required for function call: ~A" ftype))
+      (error "function type required for function call: ~%ident = ~A,ftype = ~A" ($call.ident obj) ftype))
     
     #|
     | 以下の reduce で関数呼び出しが行われた後の型を求める
@@ -341,13 +341,4 @@
         (values 
           type 
           (acons name type new-env))))))
-
-@export
-(defun typecheck-toplevel (obj)
-  "typecheckを実行するエントリポイント"
-  (typecheck obj nil))
-
- 
-
-
 
