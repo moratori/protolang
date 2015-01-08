@@ -88,6 +88,9 @@
 
 @export
 (defun ->sexpr-toplevel (objects)
+  "抽象表現のリストobjectsをとってそれを
+   S式に変換するトップレベルの関数
+   各式についてtypecheckも行う"
   (cons 'progn
         (loop 
           with env = nil
