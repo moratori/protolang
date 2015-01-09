@@ -66,7 +66,10 @@
 (defmethod typecheck ((obj $var) env)
   (let ((res (lookup ($var.value obj) env)))
     (when (null res)
-      (error "uninitialized variable"))
+      (error 
+        (make-condition 'typecheck-error
+           :message "unbound variable found. type unknown"
+           :value  obj)))
     (values res env)))
 
 
@@ -156,7 +159,10 @@
      みたいな時は f とgの型をそれぞれ再帰的にみて[α /β ]を見つけなければならない")
 
   (:method ((type1 t) (type2 t))
-   (error "type unmateched"))
+   (error 
+     (make-condition 'typecheck-internal-error
+        :message "typeobject required. unexpected object"
+        :value (list type1 type2))))
   (:method ((type1 $tint) (type2 $tint))
    nil)
   (:method ((type1 $tbool) (type2 $tbool))
@@ -184,7 +190,10 @@
          (destructuring-bind (contype thentype elsetype) args-type
 
            (unless (or (typep contype '$tundef) (type= contype ($tbool)))
-             (error "if: condition type is boolean"))
+             (error 
+               (make-condition 'typecheck-error
+                  :message "special form if: first argument is boolean"               
+                  :value contype)))
  
            (let ((new-env 
                    (if (typep contype '$tundef) 
@@ -245,18 +254,18 @@
 (defmethod typecheck ((obj $call) env)
   (multiple-value-bind (ftype args-type now-env)
     (lookup-function-type obj env) 
-
     
     (unless (typep ftype '$tfunc)
-      (error "function type required for function call: ~%ident = ~A,ftype = ~A" ($call.ident obj) ftype))
-    
+      (error 
+        (make-condition 'typecheck-error
+          :message "function type required for function call"              
+          :value obj)))
     #|
     | 以下の reduce で関数呼び出しが行われた後の型を求める
       ftype : Int -> Int  , arg : Int  => Int
       ftype : Int -> Int  , arg : α    => Int (ただし型環境を更新[Int/α])
       ftype : α   -> α    , arg : Int  => Int 
     |# 
-
     (values
       (reduce 
         (lambda (rtype at) 
@@ -270,7 +279,10 @@
                (setf now-env (update-env now-env at domain))
                ($tfunc.range rtype))
               (t 
-               (error "unexpected error during function call type checking")))))
+               (error 
+                 (make-condition 'typecheck-error
+                   :message "invalid function call"
+                   :value (list domain at)))))))
         args-type
         :initial-value ftype)
       now-env)))
@@ -302,7 +314,9 @@
          (expr ($fn.body obj)))
 
     (when (null argenv)
-      (error "can't make constant function"))
+      (error
+        (make-condition 'typecheck-error
+          :message "can't make constant function")))
 
     (multiple-value-bind (exprtype new-env)
       #|
@@ -311,10 +325,11 @@
       |#
       (typecheck expr env)
 
-
       (unless (or (null typedresult) (type= typedresult exprtype))
-        (error "type inconsistency: declare = ~A , but inferenced = ~A" 
-               typedresult exprtype))
+        (error 
+          (make-condition 'typecheck-error
+            :message "type inconsistency found: does not match declared type and inferenced type"
+            :value (list typedresult exprtype))))
 
       (values 
         (make-function-type 

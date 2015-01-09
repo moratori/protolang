@@ -8,7 +8,7 @@
         :yacc
         :cl-lex)
   (:export
-    :plang-syntax
+    :plang-parser
     )
   )
 
@@ -73,7 +73,7 @@
   )
 
 
-(defparser plang-syntax 
+(defparser plang-parser 
   (("[0-9]"      :integer) 
    ("true|false" :boolean) 
    ("Bool"       :tbool)   

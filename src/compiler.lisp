@@ -64,7 +64,10 @@
          exprs
          `(if ,cond ,then ,else)))
       (t 
-       (error "unexpected symbol: ~A" ident)))))
+       (error 
+         (make-condition 'special-form
+            :message "unexpected special form"
+            :value ident))))))
 
 
 (defmethod ->sexpr ((obj $fn))
