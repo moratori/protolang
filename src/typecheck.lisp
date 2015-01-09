@@ -244,6 +244,12 @@
             (lookup ident (append env *primitive-function-type*))
             args-type
             env))
+        ($var 
+          (lookup-function-type%
+            ($var.value ident)
+            (lookup ($var.value ident) (append env *primitive-function-type*))
+            args-type
+            env))
         ($fn
           (multiple-value-bind (type new-env)
             (typecheck ident env)
@@ -282,7 +288,7 @@
                (error 
                  (make-condition 'typecheck-error
                    :message "invalid function call"
-                   :value (list domain at)))))))
+                   :value (list  ftype (list domain at))))))))
         args-type
         :initial-value ftype)
       now-env)))

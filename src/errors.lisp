@@ -27,9 +27,13 @@
      :reader value)))
 
 @export
+(define-condition plang-parse-error (protolang-compile-error) ())
+
+@export
 (define-condition conversion-error (protolang-compile-error) ())
 @export
 (define-condition special-form (conversion-error) ())
+
 
 @export
 (define-condition typecheck-error (protolang-compile-error) ())

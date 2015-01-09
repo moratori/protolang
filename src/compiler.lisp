@@ -90,20 +90,26 @@
                ,sym))))
 
 @export
-(defun ->sexpr-toplevel (objects)
+(defun ->sexpr-toplevel (objects env)
   "抽象表現のリストobjectsをとってそれを
-   S式に変換するトップレベルの関数
+   prognで囲んだ1つのS式に変換するトップレベルの関数
    各式についてtypecheckも行う"
-  (cons 'progn
+  (let ((env env) (lasttype nil))
+    (values
+      (cons 'progn
         (loop 
-          with env = nil
           for expr in objects
           for (type new-env) = (multiple-value-list (typecheck expr env))
-          do (setf env new-env)
-          collect (->sexpr expr))))
+          do (progn (setf env new-env)
+                    (setf lasttype type))
+          collect (->sexpr expr)))
+      env
+      lasttype)))
 
 
-
-
+@export
+(defun ->sexpr-toplevel-with-entry (objects)
+  `(defun ,(intern "MAIN" :plang-user) ()
+     (format t "~A~%" ,(->sexpr-toplevel objects nil))))
 
 

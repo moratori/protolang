@@ -45,13 +45,17 @@
 @export-structure
 (defstruct ($integer (:constructor $integer (value))
                      (:conc-name $integer.)
-                     )
+                     (:print-object 
+                       (lambda (obj stream)
+                         (format stream "~A" ($integer.value obj)))))
   (value "" :type string))
 
 @export-structure
 (defstruct ($boolean (:constructor $boolean (value))
                      (:conc-name $boolean.)
-                     )
+                     (:print-object 
+                       (lambda (obj stream)
+                         (format stream "~A" ($boolean.value obj)))))
   (value "" :type string))
 
 @export-structure
@@ -87,8 +91,7 @@
 
 @export-structure
 (defstruct ($def (:constructor $def (name fn))
-                 (:conc-name $def.)
-                 )
+                 (:conc-name $def.))
   name fn)
 
 
@@ -112,6 +115,8 @@
 (in-package :plang-user)
 
 (enable-annot-syntax)
+
+(intern "MAIN" :plang-user)
 
 @export
 (defvar *primitive-function*

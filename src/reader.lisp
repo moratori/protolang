@@ -8,7 +8,7 @@
         :yacc
         :cl-lex)
   (:export
-    :plang-parser
+    :plang-parser-toplevel
     )
   )
 
@@ -74,7 +74,7 @@
 
 
 (defparser plang-parser 
-  (("[0-9]"      :integer) 
+  (("[0-9]+"      :integer) 
    ("true|false" :boolean) 
    ("Bool"       :tbool)   
    ("Int"        :tint)    
@@ -177,5 +177,17 @@
     (:tbool (lambda (x) (declare (ignore x)) ($tbool)))
     (type :arrow type #'make-function-type)
     (:sparen type :eparen #'ignore-paren)))
+
+
+
+(defun plang-parser-toplevel (s)
+  (handler-case 
+    (plang-parser s)
+    (error (c)
+      (declare (ignore c))
+      (error 
+        (make-condition 'plang-parse-error
+        :message "parse error occurred"
+        :value s)))))
 
 
