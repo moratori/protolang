@@ -23,6 +23,9 @@
   #+sbcl (sb-ext:exit))
 
 (defvar *default-name* "a.out")
+(defvar *print-internal-expr* nil)
+(defvar *print-sexpr* nil)
+(defvar *print-env* nil)
 
 (defun read-file (s)
   (loop 
@@ -41,6 +44,23 @@
       :toplevel #'plang-user::main
       :executable t
       :purify t)))
+
+(defun debug-print (internal-objects sexpr env)
+  "中間表現とS式とり、大域変数の値により
+   それらを表示する"
+  (when *print-internal-expr*
+    (format *standard-output* 
+            "~%DEBUG PRINT (Internal Expression)~%~%~t~A~%~%~%"
+            internal-objects))
+  (when *print-sexpr*
+    (format *standard-output* 
+            "~%DEBUG PRINT (S-Expression)~%~%~t~A~%~%~%"
+            sexpr))
+  (when *print-env*
+    (format *standard-output* 
+            "~%DEBUG PRINT (Type Environment)~%~%~t~A~%~%~%"
+            env))
+  (force-output *standard-output*))
 
 (defun print-error-message (error-condition)
   (format *standard-output* "Error: ~A~%Message: ~A~%Value: ~A~%"
@@ -92,18 +112,24 @@
   (loop with env = nil
         for expr = (read-line *standard-input* nil nil)
         while expr
-        do
+        when (string= expr "@+1") do (setf *print-sexpr* t)
+        when (string= expr "@-1") do (setf *print-sexpr* nil)
+        when (string= expr "@+2") do (setf *print-internal-expr* t)
+        when (string= expr "@-2") do (setf *print-internal-expr* nil)
+        when (string= expr "@+3") do (setf *print-env* t)
+        when (string= expr "@-3") do (setf *print-env* nil)
+        when (and (string/= expr "") (char/= #\@ (char expr 0))) do
         (handler
-          (lambda ()
-            (when (string/= expr "")
-              (let ((objects (plang-parser-toplevel expr)))
+           (lambda ()
+            (let ((objects (plang-parser-toplevel expr)))
                 (multiple-value-bind (sexpr new-env type) 
                   (->sexpr-toplevel objects env)
+                  (debug-print objects sexpr env)
                   (setf env new-env)
                   (format *standard-output* "~A : ~A~%"
                     (printable-lisp-object (eval sexpr) expr) type)
-                  (force-output *standard-output*))))))
-        (prompt)))
+                  (force-output *standard-output*)))))
+        do (prompt)))
 
 
 (defun main ()

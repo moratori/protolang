@@ -8,6 +8,7 @@
         :yacc
         :cl-lex)
   (:export
+    :plang-parser
     :plang-parser-toplevel
     )
   )
