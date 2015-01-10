@@ -168,7 +168,7 @@
     (varseq :comma var :colon type
       (lambda (a b c d e)
         (declare (ignore b d))
-        (append a ($typedvar c e)))))
+        (append a (list ($typedvar c e))))))
 
   (var 
     (:variable #'$var))

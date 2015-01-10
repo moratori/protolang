@@ -157,7 +157,7 @@
     (cons "<"   `(lambda (x) (lambda (y) (< x y))))
     (cons "=="  `(lambda (x) (lambda (y) (= x y))))
     (cons "&&"  `(lambda (x) (lambda (y) (and x y))))
-    (cons "||"  `(lambda (x) (lambda (y) (oe x y))))
+    (cons "||"  `(lambda (x) (lambda (y) (or x y))))
     (cons "!"   `(lambda (x) (not x))))
   "組み込みで用意する関数の実体")
  

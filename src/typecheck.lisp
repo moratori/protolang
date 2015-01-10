@@ -285,6 +285,8 @@
               ((typep at '$tundef)
                (setf now-env (update-env now-env at domain))
                ($tfunc.range rtype))
+              ;;; domain が ftype である場合を考慮していない
+              ;;; ただし一番はじめの節で型変数を含まない場合は通る 
               (t 
                (error 
                  (make-condition 'typecheck-error
@@ -343,7 +345,6 @@
          (typedresult ($fn.rtype obj))
          (expr ($fn.body obj)))
 
-
     (when (null argenv)
       (error
         (make-condition 'typecheck-error
@@ -368,23 +369,28 @@
           exprtype)
         (remove-local-type-bound new-env argenv)))))
 
+
+(defun make-function-schema (list rtype)
+  "list is list of typedvar"
+  (if (null list) 
+    (if rtype rtype ($tundef))
+    (let ((type ($typedvar.type (car list))))
+      ($tfunc 
+        (if type type ($tundef))
+        (make-function-schema (cdr list) rtype)))))
+
 (defmethod typecheck ((obj $def) env)
   (let* ((name ($def.name obj))
          (fn   ($def.fn obj))
-         (rtype($fn.rtype fn)))
-    (if rtype 
-      (multiple-value-bind (type new-env)
-        (typecheck fn (acons name ($tfunc ($tundef) rtype) env))
-        (values 
-          type 
-          (acons name type 
-                 (remove-if 
-                   (lambda (x) (string= x name))
-                   new-env
-                   :key #'car))))
-      (multiple-value-bind (type new-env)
-        (typecheck fn env)
-        (values 
-          type 
-          (acons name type new-env))))))
+         (rtype($fn.rtype fn))
+         (function-schema (make-function-schema ($fn.arguments fn) rtype)))
+    (multiple-value-bind (type new-env)
+      (typecheck fn (acons name function-schema env))
+      (values 
+        type 
+        (acons name type 
+          (remove-if 
+            (lambda (x) (string= x name))
+            new-env
+            :key #'car))))))
 

@@ -56,9 +56,9 @@
     (format *standard-output* 
             "~%DEBUG PRINT (S-Expression)~%~%~t~A~%~%~%"
             sexpr))
-  (when *print-env*
+  (when (and *print-env* env)
     (format *standard-output* 
-            "~%DEBUG PRINT (Type Environment)~%~%~t~A~%~%~%"
+            "~%DEBUG PRINT (Type Environment)~%~%~{~t~A~%~}~%~%~%"
             env))
   (force-output *standard-output*))
 
@@ -88,12 +88,12 @@
 (defun compile-source (name)
   (destructuring-bind (src . more) name
     (let ((dst (if (null more) *default-name* (car more))))
-      (output-executable 
-        (with-open-file (in src :direction :input)
-          (handler
-            (lambda () 
-              (->sexpr-toplevel-with-entry (plang-parser-toplevel (read-file in))))))
-        dst))))
+      (handler 
+        (lambda ()
+          (output-executable 
+            (with-open-file (in src :direction :input)
+              (->sexpr-toplevel-with-entry (plang-parser-toplevel (read-file in))))
+            dst))))))
 
 
 (defun prompt ()
