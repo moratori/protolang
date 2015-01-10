@@ -58,6 +58,37 @@
                    ($call "*" (list ($var "x") ($var "y")))))
          (list ($integer "100")))
        ($tfunc ($tint) ($tint))))
+   ;; ((x) => x) 100
+   (assert-true
+     (check 
+       ($call 
+         ($fn (list ($typedvar ($var "x") nil)) nil  ($var "x"))
+         (list ($integer "100")))
+       ($tint)))
+   ;; ((x) => (y) => x+y) [1][2]
+   (assert-true
+     (check 
+       ($call 
+         ($call 
+       ($fn (list ($typedvar ($var "x") nil)) nil 
+                 ($fn (list ($typedvar ($var "y") nil)) nil 
+                      ($call "+" (list ($var "x") ($var "y")))))
+       (list ($integer "1")))
+         (list ($integer "2"))
+         )
+       ($tint)
+       )
+     )
+   ;; ((f) => f(1)) (x) => x*5
+   (assert-true
+     (check 
+       ($call
+         ($fn (list ($typedvar ($var "f") nil)) nil ($call "f" (list ($integer "1"))))
+         (list ($fn (list ($typedvar ($var "x") nil)) nil ($call "*" (list ($var "x") ($integer "5")))))
+         )
+       ($tint)
+       )
+     )
  )
 
 (define-test fn
@@ -72,6 +103,12 @@
      (check ($fn (list ($typedvar ($var "x") ($tint))) nil 
                  ($var "x")) 
             ($tfunc ($tint) ($tint))))
+   ;; (x) => (y) => x+y
+   (assert-true 
+     (check ($fn (list ($typedvar ($var "x") nil)) nil 
+                 ($fn (list ($typedvar ($var "y") nil)) nil 
+                      ($call "+" (list ($var "x") ($var "y"))))) 
+            ($tfunc ($tint) ($tfunc ($tint) ($tint)))))
    ;; (x) => x + 1 :: Int -> Int
    (assert-true 
      (check ($fn (list ($typedvar ($var "x") nil)) nil 
@@ -148,14 +185,29 @@
                                               ($call "*" (list ($var "x") ($call "fact" (list ($call "-" (list ($var "x") ($integer "1")))))))))))
        ($tfunc ($tint) ($tint))))
    ;; def fact (x) -> if (x == 0) 1 (n * fact(n-1))
-   (assert-error
-     'error
+   (assert-true
      (check 
        ($def "fact" ($fn (list ($typedvar ($var "x") nil))  nil
                          ($special "if" (list ($call "==" (list ($var "x") ($integer "0"))) 
                                               ($integer "1") 
                                               ($call "*" (list ($var "x") ($call "fact" (list ($call "-" (list ($var "x") ($integer "1")))))))))))
        ($tfunc ($tint) ($tint))))
+   ;; def search[f,init]: Int -> if f[init] init search[f,init+1]
+   (assert-true
+     (check 
+       ($def "search" ($fn (list ($typedvar ($var "f") nil) ($typedvar ($var "init") nil)) ($tint)
+                         ($special "if" (list ($call "f" (list ($var "init"))) 
+                                              ($var "init") 
+                                              ($call "search" (list ($var "f") ($call "+" (list ($var "init") ($integer "1")))))))))
+       ($tfunc ($tfunc ($tint) ($tbool)) ($tfunc ($tint) ($tint)))))
+   ;; def search[f,init:Int]: Int -> if f[init] init search[f,init+1]
+   (assert-true
+     (check 
+       ($def "search" ($fn (list ($typedvar ($var "f") nil) ($typedvar ($var "init") ($tint))) ($tint)
+                         ($special "if" (list ($call "f" (list ($var "init"))) 
+                                              ($var "init") 
+                                              ($call "search" (list ($var "f") ($call "+" (list ($var "init") ($integer "1")))))))))
+       ($tfunc ($tfunc ($tint) ($tbool)) ($tfunc ($tint) ($tint)))))
    )
 
 

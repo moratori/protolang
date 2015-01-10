@@ -4,4 +4,11 @@
 
 (in-package :protolang-test.typecheck)
 
-(run-tests :all)
+
+
+(let ((res (run-tests :all)))
+  (print-errors res)
+  (print-failures res)
+  )
+
+

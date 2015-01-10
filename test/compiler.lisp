@@ -44,7 +44,7 @@
         )
             )
     
-    (print (->sexpr-toplevel each))
+    (print (->sexpr-toplevel each nil))
     )
   )
 
