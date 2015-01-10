@@ -295,7 +295,7 @@
 
 
 (defun make-env (arguments)
-  " lambda 式の仮引数から環境をつくる
+  "lambda 式の仮引数から環境をつくる
     型が指定されていない場合は一意な型変数を割り当てる"
   (mapcar 
     (lambda (x)
@@ -312,6 +312,28 @@
     (destructuring-bind (_ . type) (car argenv)
       (declare (ignore _))
       ($tfunc type (make-function-type (cdr argenv) rtype)))))
+
+
+(defun remove-local-type-bound (new-env argenv)
+  "arg-envで導入された型環境の情報をnew-envから取り除く
+   [x] -> 
+     [y] -> y + 1
+   y が Integerであると推論された情報は上位では必要ない
+   ((x . t1)) 
+   ((y . t2) (x . t1))
+   ((y . Integer) (x . t1))"
+  (reduce 
+    (lambda (target-env local)
+      (destructuring-bind (var . type) local
+       (declare (ignore type)) 
+       (loop with flag = nil
+             for (nvar . ntype) in target-env
+             if (string= nvar var) 
+               do (setf flag t)
+             if (and (String= nvar var) (not flag)) 
+               collect (cons nvar ntype))))
+    argenv
+    :initial-value new-env))
 
 (defmethod typecheck ((obj $fn) init-env)
   (let* ((argenv  (make-env ($fn.arguments obj)))
@@ -341,7 +363,7 @@
         (make-function-type 
           (unify-env-with-env argenv new-env)
           exprtype)
-        new-env))))
+        (remove-local-type-bound new-env argenv)))))
 
 (defmethod typecheck ((obj $def) env)
   (let* ((name ($def.name obj))
