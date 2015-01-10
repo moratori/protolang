@@ -60,38 +60,67 @@
 
 @export-structure
 (defstruct ($var (:constructor $var (value))
-                 (:conc-name $var.))
+                 (:conc-name $var.)
+                 (:print-object
+                   (lambda (obj stream)
+                     (format stream "~A" ($var.value obj)))))
   (value "" :type string))
 
 @export-structure
 (defstruct ($typedvar (:constructor $typedvar (var type))
-                      (:conc-name $typedvar.))
+                      (:conc-name $typedvar.)
+                      (:print-object 
+                        (lambda (obj stream)
+                          (format stream "~A" ($typedvar.var obj))
+                          (when ($typedvar.type obj)
+                            (format stream " : ~A" ($typedvar.type obj))))))
   (var nil :type $var)
   (type nil :type (or null $tint $tbool $tundef $tfunc)))
 
 
 @export-structure
 (defstruct ($call (:constructor $call (ident exprs))
-                  (:conc-name $call.))
+                  (:conc-name $call.)
+                  (:print-object 
+                    (lambda (obj stream)
+                      (format stream "~A[~{~A~^,~}]"
+                              ($call.ident obj)
+                              ($call.exprs obj)))))
   (ident nil)
   (exprs nil :type list))
 
 @export-structure
 (defstruct ($special (:constructor $special (ident exprs))
-                     (:conc-name $special.))
+                     (:conc-name $special.)
+                     (:print-object 
+                       (lambda (obj stream)
+                         (format stream "~A ~{~A~^ ~}"
+                                 ($special.ident obj)
+                                 ($special.exprs obj)))))
   (ident "" :type string)
   (exprs nil :type list))
 
 @export-structure
 (defstruct ($fn (:constructor $fn (arguments rtype body))
-                (:conc-name $fn.))
+                (:conc-name $fn.)
+                (:print-object
+                  (lambda (obj stream)
+                    (format stream "[~{~A~^,~}]"
+                            ($fn.arguments obj))
+                    (when ($fn.rtype obj)
+                      (format stream ":~A" ($fn.rtype obj)))
+                    (format stream " -> ~A" ($fn.body obj)))))
   (arguments nil :type list)
   (rtype nil :type (or null $tint $tbool $tfunc $tundef))
   (body nil :type (or $call $special $fn $integer $boolean $var)))
 
 @export-structure
 (defstruct ($def (:constructor $def (name fn))
-                 (:conc-name $def.))
+                 (:conc-name $def.)
+                 (:print-object 
+                   (lambda (obj stream)
+                     (format stream "def ~A" ($def.name obj))
+                     (format stream "~t~A" ($def.fn obj)))))
   name fn)
 
 

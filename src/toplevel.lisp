@@ -100,12 +100,13 @@
   (format *standard-output* "~%>>> ")
   (force-output *standard-output*))
 
-(defun printable-lisp-object (lisp-object expr)
-  (typecase lisp-object
-    (function expr)
+(defun printable-lisp-object (lisp-inner-object objects expr)
+  (typecase lisp-inner-object
+    (function objects)
     (boolean 
-      (if lisp-object "true" "false"))
-    (t lisp-object)))
+      (if lisp-inner-object "true" "false"))
+    (t lisp-inner-object))
+  )
 
 (defun repl ()
   (prompt)
@@ -127,7 +128,7 @@
                   (debug-print objects sexpr env)
                   (setf env new-env)
                   (format *standard-output* "~A : ~A~%"
-                    (printable-lisp-object (eval sexpr) expr) type)
+                    (printable-lisp-object (eval sexpr) objects expr) type)
                   (force-output *standard-output*)))))
         do (prompt)))
 

@@ -219,6 +219,7 @@
     ($tfunc (car args-type) (inference-function-type (cdr args-type)))))
 
 
+
 (defun lookup-function-type% (ident ftype args-type env)
   "lookup-function-typeのヘルパ関数
    求めた関数型が型変数であったばあいに、引数の型から
@@ -250,7 +251,7 @@
             (lookup ($var.value ident) (append env *primitive-function-type*))
             args-type
             env))
-        ($fn
+        ((or $fn $call)
           (multiple-value-bind (type new-env)
             (typecheck ident env)
             (lookup-function-type%
@@ -314,6 +315,7 @@
       ($tfunc type (make-function-type (cdr argenv) rtype)))))
 
 
+
 (defun remove-local-type-bound (new-env argenv)
   "arg-envで導入された型環境の情報をnew-envから取り除く
    [x] -> 
@@ -326,12 +328,12 @@
     (lambda (target-env local)
       (destructuring-bind (var . type) local
        (declare (ignore type)) 
-       (loop with flag = nil
-             for (nvar . ntype) in target-env
-             if (string= nvar var) 
-               do (setf flag t)
-             if (and (String= nvar var) (not flag)) 
-               collect (cons nvar ntype))))
+       (remove-if 
+         (let (flag)
+           (lambda (each)
+           (destructuring-bind (nvar . ntype) each
+             (setf flag (and (string= nvar var) (not flag))))))
+         target-env)))
     argenv
     :initial-value new-env))
 
@@ -340,6 +342,7 @@
          (env (append argenv init-env))
          (typedresult ($fn.rtype obj))
          (expr ($fn.body obj)))
+
 
     (when (null argenv)
       (error
