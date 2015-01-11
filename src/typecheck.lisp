@@ -76,7 +76,13 @@
 (defun arg-typecheck (args env)
    "関数呼び出しの引数のリスト args を
     型環境 env で 判定し、その型のリスト
-    と新しい型環境を返す"
+    と新しい型環境を返す
+    例
+    式の列 A1 A2 A3 と初期の型環境 envについて
+    ac(A1,env) -> typeA1 E1
+    ac(A2,E1)  -> typeA2 E2
+    ac(A3,E2)  -> typeA3 E3
+    各 typeAn と 最後の型環境E3を返す"
   (let ((args-type nil))
     (values 
       (reduce 
@@ -88,6 +94,27 @@
         args
         :initial-value env)
       args-type)))
+
+(defun arg-typecheck-toplevel (args env)
+  "arg-typecheck で　最後の式の型推論を行った時の
+    型環境がもっとも情報量が多い。
+    初期値の型環境でA1の式の型が未定であったとしても
+    A2,A3の式中で判明した情報 (型環境)を用いれば
+    A1の型を知ることができる。
+    関数はそれを繰り返し、新たに判明するものがなくなるまで繰り返す"
+  (multiple-value-bind (init-env args-type)
+    (arg-typecheck args env)
+    (loop with old-args-type =  args-type
+          with old-env = init-env 
+          with old-num = (count-if (lambda (x) (typep x '$tundef)) old-args-type)
+          finally (return-from arg-typecheck-toplevel (values old-env old-args-type))
+          for (next-env next-args-type) = (multiple-value-list (arg-typecheck args old-env))
+          for next-num = (count-if (lambda (x) (typep x '$tundef)) next-args-type)
+          while (< next-num old-num)
+          do 
+           (setf old-args-type next-args-type
+                 old-env next-env
+                 old-num next-num))))
 
 
 (defun update-env (env old new)
@@ -161,7 +188,7 @@
   (:method ((type1 t) (type2 t))
    (error 
      (make-condition 'typecheck-internal-error
-        :message "typeobject required. unexpected object"
+        :message "unmatched typed object found"
         :value (list type1 type2))))
   (:method ((type1 $tint) (type2 $tint))
    nil)
@@ -185,16 +212,20 @@
   (let ((ident ($special.ident obj)))
     (cond 
       ((string= ident "if")
+       (force-output *standard-output*)
        (multiple-value-bind (new-env args-type)
-         (arg-typecheck ($special.exprs obj) env)
+         (arg-typecheck-toplevel ($special.exprs obj) env)
+         (force-output *standard-output*)
+
          (destructuring-bind (contype thentype elsetype) args-type
+
 
            (unless (or (typep contype '$tundef) (type= contype ($tbool)))
              (error 
                (make-condition 'typecheck-error
                   :message "special form if: first argument is boolean"               
-                  :value contype)))
- 
+                  :value contype))) 
+
            (let ((new-env 
                    (if (typep contype '$tundef) 
                      (update-env new-env contype ($tbool))
@@ -236,7 +267,7 @@
   "呼び出される関数の型を求める
    関数の型 , 関数の引数の型 , 型環境を求める"
   (multiple-value-bind (env args-type)
-    (arg-typecheck ($call.exprs obj) env)
+    (arg-typecheck-toplevel ($call.exprs obj) env)
     (let ((ident ($call.ident obj)))
       (etypecase ident 
         (string 
@@ -256,7 +287,39 @@
             (typecheck ident env)
             (lookup-function-type%
               ident type args-type new-env)))))))
+
+
+(defun eliminate-ftype (ftype argtype env)
+  "ftype を関数型 argtype を引数の型とするとき
+   関数呼び出し後の型をもとめる
+   必要に応じてenvを更新し、型と新しい環境を多値で返却する"
+  (let ((domain ($tfunc.domain ftype))
+        (range  ($tfunc.range ftype)))
+    (cond 
+      ((type= domain argtype) 
+       (values range env))
+      ((typep domain '$tundef)
+       (values 
+         (substype range domain argtype)
+         env))
+      ((typep argtype '$tundef)
+       (values 
+         range
+         (update-env env argtype domain)))
+      (t 
+       (handler-case
+           (let ((rule (match domain argtype)))
+             (values 
+               (unify-type-with-rule range rule)
+               (unify-env-with-rule env rule)))
+           (typecheck-internal-error (c)
+             (declare (ignore c))
+             (error 
+               (make-condition 'typecheck-error
+                 :message "invalid function call"
+                 :value (list domain argtype)))))))))
  
+
 
 (defmethod typecheck ((obj $call) env)
   (multiple-value-bind (ftype args-type now-env)
@@ -273,25 +336,15 @@
       ftype : Int -> Int  , arg : α    => Int (ただし型環境を更新[Int/α])
       ftype : α   -> α    , arg : Int  => Int 
     |# 
+
+    
     (values
       (reduce 
         (lambda (rtype at) 
-          (let ((domain ($tfunc.domain rtype)))
-            (cond 
-              ((type= domain at)
-               ($tfunc.range rtype))
-              ((typep domain '$tundef)
-               (substype ($tfunc.range rtype) domain at))
-              ((typep at '$tundef)
-               (setf now-env (update-env now-env at domain))
-               ($tfunc.range rtype))
-              ;;; domain が ftype である場合を考慮していない
-              ;;; ただし一番はじめの節で型変数を含まない場合は通る 
-              (t 
-               (error 
-                 (make-condition 'typecheck-error
-                   :message "invalid function call"
-                   :value (list  ftype (list domain at))))))))
+          (multiple-value-bind (rangetype new-env)
+            (eliminate-ftype rtype at now-env)
+            (setf now-env new-env)
+            rangetype))
         args-type
         :initial-value ftype)
       now-env)))

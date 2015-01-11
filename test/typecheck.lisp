@@ -208,6 +208,15 @@
                                               ($var "init") 
                                               ($call "search" (list ($var "f") ($call "+" (list ($var "init") ($integer "1")))))))))
        ($tfunc ($tfunc ($tint) ($tbool)) ($tfunc ($tint) ($tint)))))
+   ;; def search[f,init] -> if f[init] init search[f,init+1]
+   (assert-true
+     (check 
+       ($def "search" ($fn (list ($typedvar ($var "f") nil) ($typedvar ($var "init") nil)) nil
+                         ($special "if" (list ($call "f" (list ($var "init"))) 
+                                              ($var "init") 
+                                              ($call "search" (list ($var "f") ($call "+" (list ($var "init") ($integer "1")))))))))
+       ($tfunc ($tfunc ($tint) ($tbool)) ($tfunc ($tint) ($tint)))))
+
    )
 
 

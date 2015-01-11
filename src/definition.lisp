@@ -18,13 +18,18 @@
   (ident (symbol-name (gensym "tv"))))
 
 @export-structure
+(defstruct $tliteral)
+
+@export-structure
 (defstruct ($tint (:constructor $tint)
+                  (:include $tliteral)
                   (:print-object 
                     (lambda (obj stream)
                       (declare (ignore obj))
                       (format stream "Integer")))))
 @export-structure
 (defstruct ($tbool (:constructor $tbool)
+                   (:include $tliteral)
                    (:print-object 
                     (lambda (obj stream)
                       (declare (ignore obj))
