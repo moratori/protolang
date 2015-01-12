@@ -1,14 +1,13 @@
 protolang
 =====
 
-静的型付けで型推論をもつ試験的な言語です  
-整数型と真偽値型と関数型の3つしかデータ型を持ちません  
+静的型付けで型推論をもつ試験的な関数型言語です  
 
 
 使い方
 =====
 
-SBCLをインストールしquicklispを入れてください  
+[SBCL](http://www.sbcl.org/ )(Common Lisp処理系)をインストールし[quicklisp](http://www.quicklisp.org/)を入れてください  
 ~/.quicklisp/local-projects で  
 git clone https://github.com/moratori/protolang.git してください.
 
