@@ -9,6 +9,8 @@
 
 (enable-annot-syntax)
 
+
+
 @export-structure
 (defstruct ($tundef (:constructor $tundef ())
                     (:conc-name $tundef.)
@@ -17,23 +19,42 @@
                         (format stream "~A" ($tundef.ident obj)))))
   (ident (symbol-name (gensym "tv"))))
 
-@export-structure
-(defstruct $tliteral)
 
 @export-structure
 (defstruct ($tint (:constructor $tint)
-                  (:include $tliteral)
                   (:print-object 
                     (lambda (obj stream)
                       (declare (ignore obj))
                       (format stream "Integer")))))
 @export-structure
 (defstruct ($tbool (:constructor $tbool)
-                   (:include $tliteral)
                    (:print-object 
                     (lambda (obj stream)
                       (declare (ignore obj))
                       (format stream "Boolean")))))
+
+@export-structure
+@doc 
+ "整数値を保持しておくオブジェクト.
+  このオブジェクトが表す整数値の型は当然$tint" 
+(defstruct ($integer (:constructor $integer (value))
+                     (:conc-name $integer.)
+                     (:print-object 
+                       (lambda (obj stream)
+                         (format stream "~A" ($integer.value obj)))))
+  (value "" :type string))
+
+
+@export-structure
+ "真偽値を保持しておくオブジェクト.
+  このオブジェクトが表す真偽値の型は当然$tint" 
+(defstruct ($boolean (:constructor $boolean (value))
+                     (:conc-name $boolean.)
+                     (:print-object 
+                       (lambda (obj stream)
+                         (format stream "~A" ($boolean.value obj)))))
+  (value "" :type string))
+ 
 
 @export-structure
 (defstruct ($tfunc (:constructor $tfunc (domain range))
@@ -47,21 +68,57 @@
   (range nil  :type (or $tint $tbool $tfunc $tundef)))
 
 
-@export-structure
-(defstruct ($integer (:constructor $integer (value))
-                     (:conc-name $integer.)
-                     (:print-object 
-                       (lambda (obj stream)
-                         (format stream "~A" ($integer.value obj)))))
-  (value "" :type string))
+
+
 
 @export-structure
-(defstruct ($boolean (:constructor $boolean (value))
-                     (:conc-name $boolean.)
-                     (:print-object 
-                       (lambda (obj stream)
-                         (format stream "~A" ($boolean.value obj)))))
-  (value "" :type string))
+@doc
+  "type宣言で新しく作る型の左辺を表す
+   identは新しい型名
+   argsは型変数のリスト" 
+(defstruct ($tuser (:constructor $tuser (ident args)))
+  (ident (error "ident required") :type string)
+  (args nil :type list))
+
+
+@export-structure
+@doc
+  "type宣言の右辺のバーで区切られる各フィールド
+   identは構築子を識別するシンボル.
+   構築子名の先頭は大文字にすることで関数とは区別する
+   argsは型のリスト. 型変数も取りうる" 
+(defstruct ($typecons (:constructor $typecons (ident args)))
+  (ident (error "ident required") :type string)
+  (args nil :type list))
+
+
+@export-structure
+@doc
+ "type List a = Nil | Cons a (List a) みたいな表現の直接的な内部表現
+   newtypeは $tuserのオブジェクト.(左辺)
+   constructorsはnewtypeがどのような方法で作られ得るかを表す
+   コンストラクタ($typeconsオブジェクト)のリスト
+  この構造体は $tuser と $typecons から成り立つ" 
+(defstruct ($makenewtype (:constructor $makenewtype (newtype constructors))) 
+  (newtype (error "newtype required") :type $tuser)
+  (constructors nil :type list))
+
+
+@export-structure
+@doc
+ "ユーザがtype宣言で定義した型を持つ値を保持するための構造体
+  identは構築子名,argsはそれへの引数で、様々なオブジェクトが入るリスト
+  Person <true,21>
+  Point  <2,3>"
+(defstruct ($userobj (:constructor $userobj (ident args)))
+  (ident (error "ident required") :type string)
+  (args nil :type list))
+
+
+
+
+
+
 
 @export-structure
 (defstruct ($var (:constructor $var (value))
