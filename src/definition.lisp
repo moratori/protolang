@@ -98,7 +98,8 @@
    newtypeは $tuserのオブジェクト.(左辺)
    constructorsはnewtypeがどのような方法で作られ得るかを表す
    コンストラクタ($typeconsオブジェクト)のリスト
-  この構造体は $tuser と $typecons から成り立つ" 
+  この構造体は $tuser と $typecons から成り立つ
+  S式にこれを落とすときはconstructors毎にdefstructで作ってやればおｋ" 
 (defstruct ($makenewtype (:constructor $makenewtype (newtype constructors))) 
   (newtype (error "newtype required") :type $tuser)
   (constructors nil :type list))
