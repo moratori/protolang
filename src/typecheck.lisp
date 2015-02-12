@@ -212,13 +212,10 @@
   (let ((ident ($special.ident obj)))
     (cond 
       ((string= ident "if")
-       (force-output *standard-output*)
        (multiple-value-bind (new-env args-type)
          (arg-typecheck-toplevel ($special.exprs obj) env)
-         (force-output *standard-output*)
 
          (destructuring-bind (contype thentype elsetype) args-type
-
 
            (unless (or (typep contype '$tundef) (type= contype ($tbool)))
              (error 
@@ -432,6 +429,7 @@
         (if type type ($tundef))
         (make-function-schema (cdr list) rtype)))))
 
+
 (defmethod typecheck ((obj $def) env)
   (let* ((name ($def.name obj))
          (fn   ($def.fn obj))
@@ -446,4 +444,7 @@
             (lambda (x) (string= x name))
             new-env
             :key #'car))))))
+
+
+
 
