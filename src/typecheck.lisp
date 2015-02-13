@@ -540,11 +540,11 @@
                    (match ty sc))))))
         
         (when (contradict-envp env)
-          (print env)
           (error "type unmached to constructor schema"))
         
         (values 
           (unify-type-with-rule tuser env)
           env)))))
+
 
 

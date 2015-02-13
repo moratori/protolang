@@ -78,7 +78,14 @@
 @export-structure 
 (defstruct ($tuser (:constructor $tuser (ident args))
                    (:conc-name $tuser.)
-                   )
+                   (:print-object 
+                     (lambda (obj stream)
+                       (let ((args ($tuser.args obj)))
+                         (if args
+                           (format stream "(~A ~{~A~^ ~})" 
+                                   ($tuser.ident obj)
+                                   args)
+                           (format stream "~A" ($tuser.ident obj)))))))
   (ident (error "ident required") :type string)
   (args nil :type list))
 
@@ -121,7 +128,14 @@
 @export-structure 
 (defstruct ($userobj (:constructor $userobj (ident args))
                      (:conc-name $userobj.)
-                     )
+                     (:print-object 
+                       (lambda (obj stream)
+                         (let ((args ($userobj.args obj)))
+                           (if args 
+                             (format stream "~A<~{~A~^,~}>"
+                                 ($userobj.ident obj)
+                                 ($userobj.args obj))
+                             (format stream "~A" ($userobj.ident obj)))))))
   (ident (error "ident required") :type string)
   (args nil :type list))
 
