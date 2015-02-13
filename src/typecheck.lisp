@@ -27,7 +27,13 @@
    (and (type= ($tfunc.domain a) ($tfunc.domain b))
         (type= ($tfunc.range a) ($tfunc.range b))))
   (:method ((a $tundef) (b $tundef))
-   (equal ($tundef.ident a) ($tundef.ident b))))
+   (equal ($tundef.ident a) ($tundef.ident b)))
+
+  (:method ((a $tuser) (b $tuser))
+   (and 
+     (string= ($tuser.ident a) ($tuser.ident b))
+     (every #'type= ($tuser.args a) ($tuser.args b)))))
+
 
 
 (defgeneric substype (target old new)
@@ -49,6 +55,15 @@
   ($tfunc 
     (substype ($tfunc.domain target) old new)
     (substype ($tfunc.range target) old new)))
+
+
+(defmethod substype ((target $tuser) (old $tundef) new)
+  ($tuser 
+    ($tuser.ident target)
+    (mapcar 
+      (lambda (x)
+        (substype x old new)) 
+      ($tuser.args target))))
 
 
 @export
@@ -205,6 +220,14 @@
   (append 
     (match ($tfunc.domain type1) ($tfunc.domain type2))
     (match ($tfunc.range type1) ($tfunc.range type2))))
+
+(defmethod match ((type1 $tuser) (type2 $tuser))
+  (unless (string= ($tuser.ident type1) ($tuser.ident type2))
+    (error "unmatched user defined type"))
+  (mapcan 
+    #'match
+    ($tuser.args type1)
+    ($tuser.args type2)))
 
 
 
@@ -446,5 +469,82 @@
             :key #'car))))))
 
 
+
+(defmethod typecheck ((obj $makenewtype) env)
+  (let ((newtype      ($makenewtype.newtype obj))
+        (constructors ($makenewtype.constructors obj)))
+    (loop for each in constructors 
+          do (push (cons each newtype) *user-defined-type*))
+    (values newtype env)))
+
+
+(defun lookup-userdefined-type (userobj)
+  "$userobjのコンストラクタを見てどの型($tuserオブジェクトを得る)"
+  (assert (typep userobj '$userobj))
+  (assoc ($userobj.ident userobj) 
+         *user-defined-type*
+         :key  #'$typecons.ident 
+         :test #'string=))
+
+
+(defun contradict-envp (env)
+  "((a . B) (a . C)) のようなおかしな環境となっていないか
+   (($tundef . Type1) ...)"
+  (loop for (dom1 . range1) in env do
+    (loop for (dom2 . range2) in env do
+      (assert (and (typep dom1 '$tundef) 
+                   (typep dom2 '$tundef)))
+      (when (and (type= dom1 dom2)
+                 (not (type= range1 range2)))
+        (return-from contradict-envp t)))))
+
+(defun remove-id-bound (env)
+  "型環境から意味のない束縛を除去する
+   ((x . x))のような"
+  (remove-if 
+    (lambda (x)
+      (type= (car x) (cdr x)))
+    env))
+
+
+
+(defmethod typecheck ((obj $userobj) env)
+  "ユーザ定義した型のオブジェクトに対する型推論"
+  (let ((tmp (lookup-userdefined-type obj)))
+    
+    (unless tmp
+      (error "unknown constructor"))
+
+
+    (destructuring-bind (constructor-schema . tuser) tmp
+      (assert (and (typep constructor-schema '$typecons)
+                   (typep tuser '$tuser)))
+
+      ;; constructor-schema と userobjが一致するかを調べる
+      ;; 一致すればtuserをに単一化を施しそれを返す
+
+      (unless (= (length ($typecons.args constructor-schema))
+                 (length ($userobj.args  obj)))
+        (error "length of argument does not match"))
+
+      (let* ((now env)
+             (env 
+               (remove-id-bound
+                (loop 
+                 for each in ($userobj.args obj)
+                 for sc in ($typecons.args constructor-schema)
+                 append
+                 (multiple-value-bind (ty new) 
+                   (typecheck each now)
+                   (setf now new)
+                   (match ty sc))))))
+        
+        (when (contradict-envp env)
+          (print env)
+          (error "type unmached to constructor schema"))
+        
+        (values 
+          (unify-type-with-rule tuser env)
+          env)))))
 
 

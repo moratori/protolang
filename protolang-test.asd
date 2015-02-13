@@ -17,5 +17,6 @@
           :serial t
           :components 
             ((:file "typecheck")
+             (:file "tuser")
              (:file "compiler")
              (:file "reader")))))
