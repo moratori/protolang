@@ -169,7 +169,12 @@
    env2: ((x . Int)...)
    を ((x . Int)...) のようにして返す。
    env1では不確定だった型変数を env2 を使って書き換える
-   env2は一種の書き換え規則のように振る舞う"
+   env2は一種の書き換え規則のように振る舞う
+   => 不確定性の高い状態にならないか？
+      型変数の含む数などで順序つける必要はないか？
+      => ある時点で型が分からないから型変数が導入されるのであって
+         env1 に於いて型が判定しているものについて env1を継承しているenv2において
+         型変数が導入されるはずはない"
   (mapcar 
     (lambda (e1)
       (reduce 
@@ -223,7 +228,10 @@
 
 (defmethod match ((type1 $tuser) (type2 $tuser))
   (unless (string= ($tuser.ident type1) ($tuser.ident type2))
-    (error "unmatched user defined type"))
+    (error 
+     (make-condition 'typecheck-internal-error
+        :message "unmatched typed object found"
+        :value (list type1 type2))))
   (mapcan 
     #'match
     ($tuser.args type1)
@@ -423,6 +431,8 @@
         (make-condition 'typecheck-error
           :message "can't make constant function")))
 
+    (print "here2")
+
     (multiple-value-bind (exprtype new-env)
       #|
       | new-env には　argenv 作成時には不明だった変数の型が推論された
@@ -430,11 +440,16 @@
       |#
       (typecheck expr env)
 
+      (print "here3")
+
       (unless (or (null typedresult) (type= typedresult exprtype))
         (error 
           (make-condition 'typecheck-error
             :message "type inconsistency found: does not match declared type and inferenced type"
             :value (list typedresult exprtype))))
+
+      (print "here4")
+
 
       (values 
         (make-function-type 
@@ -458,8 +473,10 @@
          (fn   ($def.fn obj))
          (rtype($fn.rtype fn))
          (function-schema (make-function-schema ($fn.arguments fn) rtype)))
+    (print "here0")
     (multiple-value-bind (type new-env)
       (typecheck fn (acons name function-schema env))
+      (print "here10")
       (values 
         type 
         (acons name type 
@@ -528,7 +545,7 @@
         (error "length of argument does not match"))
 
       (let* ((now env)
-             (env 
+             (typemaching
                (remove-id-bound
                 (loop 
                  for each in ($userobj.args obj)
@@ -539,12 +556,60 @@
                    (setf now new)
                    (match ty sc))))))
         
-        (when (contradict-envp env)
+        (when (contradict-envp typemaching)
           (error "type unmached to constructor schema"))
-        
+
+        (print "wow")
+
+
         (values 
-          (unify-type-with-rule tuser env)
-          env)))))
+          (unify-type-with-rule tuser typemaching)
+          now)))))
+
+
+
+
+(defmethod typecheck-clause  ((obj $match-clause))
+  "match 式の一つの節が何型であるかを判定する"
+  (let ((pattern ($match-clause.pattern obj))
+        (expr ($match-clause.expr obj)))
+
+    (assert (typep pattern '$userobj))
+    
+    )
+  )
+
+
+(defmethod typecheck ((obj $match) env)
+  "match式は全ての節で同じ型を返さないといけない
+   それの検査をする
+   またこのメソッドを抜けるときにはパターン変数にマッチされた束縛を
+   envから除去しなければならない"
+  (let* ((expr ($match.expr obj))
+         (clauses ($match.clauses obj)))
+
+    (unless clauses 
+      (error "null clauses is not allowed"))
+    
+    ;; はじめに先頭の節について何型であるかを判定しないといけない
+    (let* ((head-clause (car clauses))
+           (head-clause-type (typecheck-clause head-clause )))      
+
+      
+
+      )
+    
+    )
+  )
+
+
+
+
+
+
+
+
+
 
 
 

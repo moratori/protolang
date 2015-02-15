@@ -59,8 +59,8 @@
                       (format stream "(~A -> ~A)"
                               (print-object ($tfunc.domain obj) nil)
                               (print-object ($tfunc.range obj) nil)))))
-  (domain nil :type (or $tint $tbool $tfunc $tundef))
-  (range nil  :type (or $tint $tbool $tfunc $tundef)))
+  (domain nil :type (or $tint $tbool $tfunc $tundef $tuser))
+  (range nil  :type (or $tint $tbool $tfunc $tundef $tuser)))
 
 
 
@@ -156,7 +156,7 @@
 (defstruct ($match (:constructor $match (expr clauses))
                    (:conc-name $match.))
   expr 
-  (clauses nil :type list))
+  (clauses (error "clauses required") :type list))
 
 
 
@@ -184,7 +184,7 @@
                           (when ($typedvar.type obj)
                             (format stream " : ~A" ($typedvar.type obj))))))
   (var nil :type $var)
-  (type nil :type (or null $tint $tbool $tundef $tfunc)))
+  (type nil :type (or null $tint $tbool $tundef $tfunc $tuser)))
 
 
 @export-structure
@@ -220,8 +220,8 @@
                       (format stream ":~A" ($fn.rtype obj)))
                     (format stream " -> ~A" ($fn.body obj)))))
   (arguments nil :type list)
-  (rtype nil :type (or null $tint $tbool $tfunc $tundef))
-  (body nil :type (or $call $special $fn $integer $boolean $var)))
+  (rtype nil :type (or null $tint $tbool $tfunc $tundef $tuser))
+  (body nil :type (or $call $special $fn $integer $boolean $var $userobj)))
 
 @export-structure
 (defstruct ($def (:constructor $def (name fn))
