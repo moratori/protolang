@@ -132,6 +132,88 @@
                  old-num next-num))))
 
 
+#|
+  env と rule は似て非なるもの
+  env はある変数(型変数ではなくプログラム中で使われる普通の変数)
+  がどの型であるかの情報を保持しているリスト。
+  かつ、そのalistのcarは変数オブジェクトではなく文字列型で保持されているので
+  [(String,Type)]となるもの。
+  一方 rule は型と型のmatchの結果生まれた、単一化子のこと
+  例えば Type<a,Integer> Type<c,c> の場合 ((a . c) (c . Integer))となる
+|#
+
+
+
+
+(defun contradict-rulep (rule)
+  "((a . B) (a . C)) のようなおかしな環境となっていないか
+   (($tundef . Type1) ...)"
+  (loop for (dom1 . range1) in rule do
+    (loop for (dom2 . range2) in rule do
+      (assert (and (typep dom1 '$tundef) 
+                   (typep dom2 '$tundef)))
+      (when (and (type= dom1 dom2)
+                 (not (type= range1 range2)))
+        (return-from contradict-rulep t)))))
+
+(defun remove-id-rule (rule)
+  "型環境から意味のないruleを除去する
+   ((x . x))のような"
+  (remove-if 
+    (lambda (x)
+      (type= (car x) (cdr x)))
+    rule)) 
+
+
+(defgeneric occur-type (a b)
+  (:documentation 
+    "型b中に型変数aが出現するかを判定する")
+  (:method ((type1 t) (type2 t))
+   (type= type1 type2))
+  (:method ((type1 $tundef) (type2 $tuser))
+   (some 
+     (lambda (x)
+       (occur-type type1 x))
+     ($tuser.args type2))))
+
+
+(defun regulate-rule (rule)
+  "rule を正規形にする.
+   ここでいう正規系とは((a . C) (b . (T a)) (d . (U b)))
+   のような rule を ((a . C) (b . (T C)) (d . (U (T C))))
+   にすること.
+   終了条件は全てのrule対の右辺に全てのrule対の左辺が出現しないようになること
+   
+   当然だけれども現状の出現検査をしない処理では無限ループに陥る場合がある
+   たとえば ((a . b) (b . (T a))) みたいのをやろうとしたとき
+   とにかく ((α  . (T ... α　...))) となるようなパターンはループする" 
+
+  (labels
+    ((occur-in-right (rule left)
+       "何れかの書き換え規則ruleの右辺中にleftが出現することを確認する"
+       (some 
+         (lambda (a.b)
+           (destructuring-bind (l . r) a.b
+             (occur-type left r)))
+         rule))
+     
+     (rewrite-rule (rule left right)
+       "書き換え規則ruleを一度走査して、その右辺に出現する
+        leftをrightに書き換える"
+       (mapcar 
+         (lambda (a.b)
+           (destructuring-bind (l . r) a.b
+             (cons l (substype r left right))))
+         rule)))
+    (loop 
+      named exit
+      with res = rule
+      finally (return-from exit res)
+      for (left . right) in rule
+      while (occur-in-right res left)
+      do (setf res (rewrite-rule res left right)))))
+
+
 (defun update-env (env old new)
   "env : ((x . TYPE-1) ...) について
    (substype TYPE-n old new) した新しい環境を返す"
@@ -148,7 +230,7 @@
     (lambda (type each)
       (destructuring-bind (old . new) each
         (substype type old new)))
-    rule
+    (regulate-rule rule)
     :initial-value type))
 
 
@@ -160,7 +242,7 @@
     (lambda (env each)
       (destructuring-bind (old . new) each
         (update-env env old new)))
-    rule
+    (regulate-rule rule)
     :initial-value env))
 
 
@@ -431,7 +513,6 @@
         (make-condition 'typecheck-error
           :message "can't make constant function")))
 
-    (print "here2")
 
     (multiple-value-bind (exprtype new-env)
       #|
@@ -440,7 +521,6 @@
       |#
       (typecheck expr env)
 
-      (print "here3")
 
       (unless (or (null typedresult) (type= typedresult exprtype))
         (error 
@@ -448,7 +528,6 @@
             :message "type inconsistency found: does not match declared type and inferenced type"
             :value (list typedresult exprtype))))
 
-      (print "here4")
 
 
       (values 
@@ -473,10 +552,8 @@
          (fn   ($def.fn obj))
          (rtype($fn.rtype fn))
          (function-schema (make-function-schema ($fn.arguments fn) rtype)))
-    (print "here0")
     (multiple-value-bind (type new-env)
       (typecheck fn (acons name function-schema env))
-      (print "here10")
       (values 
         type 
         (acons name type 
@@ -504,26 +581,6 @@
          :test #'string=))
 
 
-(defun contradict-envp (env)
-  "((a . B) (a . C)) のようなおかしな環境となっていないか
-   (($tundef . Type1) ...)"
-  (loop for (dom1 . range1) in env do
-    (loop for (dom2 . range2) in env do
-      (assert (and (typep dom1 '$tundef) 
-                   (typep dom2 '$tundef)))
-      (when (and (type= dom1 dom2)
-                 (not (type= range1 range2)))
-        (return-from contradict-envp t)))))
-
-(defun remove-id-bound (env)
-  "型環境から意味のない束縛を除去する
-   ((x . x))のような"
-  (remove-if 
-    (lambda (x)
-      (type= (car x) (cdr x)))
-    env))
-
-
 
 (defmethod typecheck ((obj $userobj) env)
   "ユーザ定義した型のオブジェクトに対する型推論"
@@ -544,9 +601,10 @@
                  (length ($userobj.args  obj)))
         (error "length of argument does not match"))
 
+
       (let* ((now env)
              (typemaching
-               (remove-id-bound
+               (remove-id-rule
                 (loop 
                  for each in ($userobj.args obj)
                  for sc in ($typecons.args constructor-schema)
@@ -554,17 +612,15 @@
                  (multiple-value-bind (ty new) 
                    (typecheck each now)
                    (setf now new)
-                   (match ty sc))))))
+                   (match sc ty))))))
         
-        (when (contradict-envp typemaching)
+        (when (contradict-rulep typemaching)
           (error "type unmached to constructor schema"))
-
-        (print "wow")
 
 
         (values 
           (unify-type-with-rule tuser typemaching)
-          now)))))
+          (unify-env-with-rule now typemaching))))))
 
 
 
