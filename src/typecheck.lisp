@@ -239,6 +239,7 @@
 
     (let* ((equity
             (if (< (length tundef-equal-pair) 2) tmp 
+             (cons (car tundef-equal-pair) 
               (loop
                 named exit
                 with acc = tundef-equal-pair
@@ -248,7 +249,7 @@
                 collect
                 (progn 
                   (setf acc (cdr acc))
-                  (cons (cdr a) (cdr b))))))
+                  (cons (cdr a) (cdr b)))))))
           (res 
             (append equity
                     (remove-if 

@@ -14,7 +14,8 @@
   (print (typecheck o nil)))
 
 
-(defun test1 () 
+(defun test1 ()
+
   (check 
     ($makenewtype 
         ($tuser "Gender" nil)
@@ -125,6 +126,8 @@
 		                  ($typedvar ($var "y")  nil)
                       ($typedvar ($var "xs") nil)) nil
       ($userobj "Cons" (list ($var "x") ($userobj "Cons" (list ($var "y") ($var "xs"))))))))
+
+
 )
 
 (defun test2 ()
@@ -148,6 +151,35 @@
 
 
 
+(defun test3 ()
+  (check ($makenewtype 
+      ($tuser "Tree" (list ($tundef "a")))
+      (list 
+        ($typecons "Leaf" (list ($tundef "a")))
+        ($typecons "Node" 
+          (list ($tundef "a") 
+                ($tuser "Tree" (list ($tundef "a")))
+                ($tuser "Tree" (list ($tundef "a")))
+                 )))))
+  (check 
+    ($userobj 
+      "Leaf"
+      (list ($integer "1"))))
+
+  (check 
+    ($userobj 
+      "Node"
+      (list 
+        ($boolean "true")
+        ($userobj "Leaf" (list ($boolean "false")))
+        ($userobj 
+      "Node"
+      (list 
+        ($boolean "true")
+        ($userobj "Leaf" (list ($boolean "false")))
+        ($userobj "Leaf" (list ($boolean "true"))))))))
+  
+  )
 
 
 
