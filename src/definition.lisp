@@ -221,7 +221,7 @@
                     (format stream " -> ~A" ($fn.body obj)))))
   (arguments nil :type list)
   (rtype nil :type (or null $tint $tbool $tfunc $tundef $tuser))
-  (body nil :type (or $call $special $fn $integer $boolean $var $userobj)))
+  (body nil :type (or $call $special $fn $integer $boolean $var $userobj $match)))
 
 @export-structure
 (defstruct ($def (:constructor $def (name fn))

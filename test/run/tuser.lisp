@@ -4,4 +4,6 @@
 (in-package :protolang-test.tuser)
 
 
-(main)
+(test1)
+;;(test2)
+

@@ -14,7 +14,7 @@
   (print (typecheck o nil)))
 
 
-(defun main () 
+(defun test1 () 
   (check 
     ($makenewtype 
         ($tuser "Gender" nil)
@@ -36,8 +36,17 @@
         ($typecons "Nil" nil)
         ($typecons "Cons" 
           (list ($tundef "a") 
-                ($tuser "List" (list ($tundef "a")))
-                       )))))
+                ($tuser "List" (list ($tundef "a"))))))))
+
+  (check 
+    ($makenewtype 
+      ($tuser "Maybe" (list ($tundef "a")))
+      (list 
+        ($typecons "Nothing" nil)
+        ($typecons "Just" (list ($tundef "a")))
+        )
+      )
+    )
 
   (check 
     ($userobj "Male" nil ))
@@ -66,7 +75,6 @@
         ($integer "27")
         ($boolean "true"))))
 
-  
   (check 
     ($userobj "Cons"
       (list 
@@ -84,10 +92,57 @@
         ($userobj "Male" nil )
         ($integer "21")
         ($boolean "false")))
-                    ($userobj "Nil" nil)
-                    )
-                  ))))
+                    ($userobj "Nil" nil))))))
 
+  (check 
+    ($userobj "Nothing" nil))
+  
+  (check 
+    ($userobj "Just" (list ($userobj "Female" nil))))
+
+  
+    (check ($def "cons" 
+          ($fn (list ($typedvar ($var "x") nil)
+                     ($typedvar ($var "xs") nil)) nil 
+               ($userobj "Cons" 
+                         (list ($var "x") ($var "xs"))))))
+    
+    (check ($def "func" 
+          ($fn (list ($typedvar ($var "x") nil)) nil 
+               ($userobj "Just" 
+                         (list ($var "x"))))))
+    
+    (check 
+      ($def "f" 
+            ($fn (list ($typedvar ($var "x") nil)
+                       ($typedvar ($var "y") nil)) nil
+                 ($userobj "Cons"
+                           (list ($userobj "Just" (list ($var "x")))
+                                 ($var "y"))))))
+    (check 
+      ($def "h" 
+            ($fn (list ($typedvar ($var "x")  nil)
+		                  ($typedvar ($var "y")  nil)
+                      ($typedvar ($var "xs") nil)) nil
+      ($userobj "Cons" (list ($var "x") ($userobj "Cons" (list ($var "y") ($var "xs"))))))))
+)
+
+(defun test2 ()
+  ;; (List Integer) -> Integer
+  (check 
+    ($def "f" ($fn (list ($typedvar ($var "l") nil)) nil
+                   ($match ($var "l")
+                           (list 
+                             ($match-clause 
+                               ($userobj "Nil" nil) 
+                               ($integer "0"))
+                             ($match-clause 
+                               ($userobj "Cons" (list ($var "x") ($userobj "Nil" nil)))
+                               ($integer "1"))
+                             ($match-clause 
+                               ($userobj "Cons" (list ($var "x") ($var "xs")))
+                               ($var "x"))))))
+    )
 
   )
 

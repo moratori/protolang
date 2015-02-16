@@ -147,7 +147,7 @@
 
 (defun contradict-rulep (rule)
   "((a . B) (a . C)) のようなおかしな環境となっていないか
-   (($tundef . Type1) ...)"
+   (($tundef . Type1) ...) "
   (loop for (dom1 . range1) in rule do
     (loop for (dom2 . range2) in rule do
       (assert (and (typep dom1 '$tundef) 
@@ -177,6 +177,14 @@
      ($tuser.args type2))))
 
 
+(defun rewrite-rule (rule left right)
+  "書き換え規則ruleを一度走査して、その右辺に出現する
+   leftをrightに書き換える"
+  (mapcar 
+    (lambda (a.b)
+      (cons (car a.b) (substype (cdr a.b) left right)))
+    rule))
+
 (defun regulate-rule (rule)
   "rule を正規形にする.
    ここでいう正規系とは((a . C) (b . (T a)) (d . (U b)))
@@ -195,15 +203,6 @@
          (lambda (a.b)
            (destructuring-bind (l . r) a.b
              (occur-type left r)))
-         rule))
-     
-     (rewrite-rule (rule left right)
-       "書き換え規則ruleを一度走査して、その右辺に出現する
-        leftをrightに書き換える"
-       (mapcar 
-         (lambda (a.b)
-           (destructuring-bind (l . r) a.b
-             (cons l (substype r left right))))
          rule)))
     (loop 
       named exit
@@ -212,6 +211,57 @@
       for (left . right) in rule
       while (occur-in-right res left)
       do (setf res (rewrite-rule res left right)))))
+
+
+(defun simplify-rule (rule)
+  "ruleを綺麗にする
+   
+   まず remove-id-rule によって ((x . x))のようなものを取り除く
+   次に regulate-rule してrule右辺中に何れかの左辺が出現しないようにする
+   これをtmpとする
+   remove-duplicatesによって A: ((a . tv1) (a . tv2) (a . tv3)) のような
+   左辺が同じで右辺が異なる型変数であるものをtmpから得る。
+   それをつかって B: ((tv1 . tv2) (tv2 . tv3)) をつくり equityに束縛
+   最後にtmpからAを除去したもにBをappendして返す
+   "
+  (let* ((tmp (regulate-rule (remove-id-rule rule)))
+         (tundef-equal-pair 
+           ;; ((a . tv1) (a . tv2) ...)
+           ;; のようなリストを求める
+          (remove-duplicates tmp
+            :test 
+            (lambda (a b)
+              (destructuring-bind (a1 . a2) a
+                (destructuring-bind (b1 . b2) b
+                  (not (and (type= a1 b1) 
+                           (typep a2 '$tundef) 
+                           (typep b2 '$tundef)))))))))
+
+    (let* ((equity
+            (if (< (length tundef-equal-pair) 2) tmp 
+              (loop
+                named exit
+                with acc = tundef-equal-pair
+                for a = (first acc) then b
+                for b = (second acc) 
+                while (> (length acc) 1)
+                collect
+                (progn 
+                  (setf acc (cdr acc))
+                  (cons (cdr a) (cdr b))))))
+          (res 
+            (append equity
+                    (remove-if 
+                      (lambda (a.b)
+                        (some 
+                          (lambda (c.d)
+                            (and (type= (car a.b) (car c.d))
+                                 (not (type= (cdr a.b) (cdr c.d)))))
+                          tmp))
+                      tmp))))
+      (when (contradict-rulep res)
+          (error "type unmatched to constructor schema: ~%~A" res))
+      res)))
 
 
 (defun update-env (env old new)
@@ -230,7 +280,7 @@
     (lambda (type each)
       (destructuring-bind (old . new) each
         (substype type old new)))
-    (regulate-rule rule)
+    rule
     :initial-value type))
 
 
@@ -242,7 +292,7 @@
     (lambda (env each)
       (destructuring-bind (old . new) each
         (update-env env old new)))
-    (regulate-rule rule)
+    rule
     :initial-value env))
 
 
@@ -342,7 +392,7 @@
                      new-env))
                  ;; contype が 未定の場合は new-env 中のcontypeを bool にした
                  ;; 新しい型環境を new-env としている
-                 (rule (match thentype elsetype)))
+                 (rule (simplify-rule (match thentype elsetype))))
              (values
                (unify-type-with-rule thentype rule)
                (unify-env-with-rule new-env rule)))))))))
@@ -418,7 +468,7 @@
          (update-env env argtype domain)))
       (t 
        (handler-case
-           (let ((rule (match domain argtype)))
+           (let ((rule (simplify-rule (match domain argtype))))
              (values 
                (unify-type-with-rule range rule)
                (unify-env-with-rule env rule)))
@@ -589,7 +639,6 @@
     (unless tmp
       (error "unknown constructor"))
 
-
     (destructuring-bind (constructor-schema . tuser) tmp
       (assert (and (typep constructor-schema '$typecons)
                    (typep tuser '$tuser)))
@@ -601,21 +650,17 @@
                  (length ($userobj.args  obj)))
         (error "length of argument does not match"))
 
-
       (let* ((now env)
              (typemaching
-               (remove-id-rule
-                (loop 
+               (simplify-rule
+                 (loop 
                  for each in ($userobj.args obj)
                  for sc in ($typecons.args constructor-schema)
                  append
                  (multiple-value-bind (ty new) 
                    (typecheck each now)
                    (setf now new)
-                   (match sc ty))))))
-        
-        (when (contradict-rulep typemaching)
-          (error "type unmached to constructor schema"))
+                   (match sc ty)))))) 
 
 
         (values 
@@ -625,15 +670,77 @@
 
 
 
-(defmethod typecheck-clause  ((obj $match-clause))
-  "match 式の一つの節が何型であるかを判定する"
+
+
+
+
+
+
+(defmethod typecheck-clause  ((obj $match-clause) env)
+  "match 式の一つの節が何型であるかを判定し
+   その型と環境返す
+   
+   パターン中の$varオブジェクトを型環境に追加して
+   (当然型変数)exprを評価する
+
+   関数の引数と同じように型変数を導入するので unify-env-with-env しないと
+   だめなはず。
+   "
   (let ((pattern ($match-clause.pattern obj))
         (expr ($match-clause.expr obj)))
-
     (assert (typep pattern '$userobj))
-    
-    )
+
+    (multiple-value-bind (type new)
+      (typecheck 
+        expr
+        (append
+          (loop for arg in ($userobj.args pattern)
+                if (typep arg '$var)
+                collect (cons ($var.value arg) ($tundef)))
+        env))
+      (values 
+        type 
+        (unify-env-with-env env new)))))
+
+
+
+
+
+
+(defun pattern-check (expr clauses env)
+  "match式のパターン部のチェックする。
+   値コンストラクタが全てtargetの式の型の値を生成するかのcheck
+   通らないなら、エラー投げて、通れば新しい環境を返す"
+
   )
+
+
+
+(defun expr-check (clauses env)
+  "match式各節の右辺部部分の型推論を行う
+   全ての節が同じ型を返すかのチェック。
+   返すならばその型と環境を返す
+   match l with 
+     Cons<x,Nil<>> => Tuple<x,1>
+     Cons<x,Cons<y,xs>> => Tuple<x,y>
+     Cons<x,xs> => Tuple<5,x>
+   のような式の各節を考えるとそれぞれ
+   Tuple[type1 , Integer]
+   Tuple[type2,type3]
+   Tuple[Integer,type4]
+   のようになる。
+   これらは全て互いに単一化可能で無ければならない。
+   この場合返すのは Tuple[Integer,Integer]であるが
+   それは各フィールドでもっとも特定的な型を選択してゆけば良い"
+
+  (let ((now env))
+      (mapcar 
+        (lambda (clause)
+          (multiple-value-bind (type new)
+            (typecheck-clause clause now)
+            (setf now new)
+            type))
+        clauses)))
 
 
 (defmethod typecheck ((obj $match) env)
@@ -646,25 +753,8 @@
 
     (unless clauses 
       (error "null clauses is not allowed"))
-    
-    ;; はじめに先頭の節について何型であるかを判定しないといけない
-    (let* ((head-clause (car clauses))
-           (head-clause-type (typecheck-clause head-clause )))      
 
-      
-
-      )
-    
-    )
-  )
-
-
-
-
-
-
-
-
+    (expr-check clauses (pattern-check expr clauses env))))
 
 
 
