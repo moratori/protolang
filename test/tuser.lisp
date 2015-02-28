@@ -131,22 +131,47 @@
 )
 
 (defun test2 ()
-  ;; (List Integer) -> Integer
+  ;;(List Integer) -> Integer
   (check 
     ($def "f" ($fn (list ($typedvar ($var "l") nil)) nil
                    ($match ($var "l")
                            (list 
                              ($match-clause 
                                ($userobj "Nil" nil) 
-                               ($integer "0"))
-                             ($match-clause 
-                               ($userobj "Cons" (list ($var "x") ($userobj "Nil" nil)))
-                               ($integer "1"))
+                               ($integer "0")) 
                              ($match-clause 
                                ($userobj "Cons" (list ($var "x") ($var "xs")))
-                               ($var "x"))))))
+                               ($var "x")))))))
+  ;; (List Integer) -> Integer
+  (check 
+    ($def "j" ($fn (list ($typedvar ($var "l") nil)) nil
+                   ($match ($var "l")
+                           (list 
+                             ($match-clause 
+                               ($userobj "Cons" (list ($var "x") ($var "xs")))
+                               ($call "+" (list ($var "x") ($integer "1")))))))))
+  
+  (check 
+    ($def "k" 
+          ($fn (list ($typedvar ($var "obj") nil)
+                     ($typedvar ($var "default") nil)
+                     ) nil
+               ($match ($var "obj")
+                       (list 
+                         ($match-clause 
+                           ($userobj "Just" (list ($var "x")))
+                           ($var "x"))
+                         ($match-clause 
+                           ($userobj "Nothing" nil)
+                           ($var "default")
+                           )
+                         )
+                       )
+               )
+          )
     )
 
+  
   )
 
 

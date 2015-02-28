@@ -676,6 +676,7 @@
 
 
 
+#|
 
 (defmethod typecheck-clause  ((obj $match-clause) env)
   "match 式の一つの節が何型であるかを判定し
@@ -698,15 +699,10 @@
           (loop for arg in ($userobj.args pattern)
                 if (typep arg '$var)
                 collect (cons ($var.value arg) ($tundef)))
-        env))
+          env))
       (values 
         type 
         (unify-env-with-env env new)))))
-
-
-
-
-
 
 (defun pattern-check (expr clauses env)
   "match式のパターン部のチェックする。
@@ -714,8 +710,6 @@
    通らないなら、エラー投げて、通れば新しい環境を返す"
 
   )
-
-
 
 (defun expr-check (clauses env)
   "match式各節の右辺部部分の型推論を行う
@@ -743,7 +737,6 @@
             type))
         clauses)))
 
-
 (defmethod typecheck ((obj $match) env)
   "match式は全ての節で同じ型を返さないといけない
    それの検査をする
@@ -751,12 +744,68 @@
    envから除去しなければならない"
   (let* ((expr ($match.expr obj))
          (clauses ($match.clauses obj)))
-
     (unless clauses 
       (error "null clauses is not allowed"))
 
     (expr-check clauses (pattern-check expr clauses env))))
 
+|#
+
+
+(defun collect-var (pattern)
+  (etypecase pattern 
+    ($var (list (cons ($var.value pattern) ($tundef))))
+    ($userobj 
+      (mapcan 
+        #'collect-var
+        ($userobj.args pattern)))
+    (t (error "pattern required"))))
+
+
+(defmethod typecheck ((obj $match) env)
+  "match式のパターン部に来るのはコンストラクタの識別子と
+   変数だけにする。
+   Cons<1,Nil> とかのmatchはできない.
+   なぜなら 様々なオブジェクトが 1　と等しいかを判断するためには
+   等号がどのような型に対してどのように等値性を判定するかの定義が無いといけない
+   Haskellとかだったら型クラスみたいな"
+  (let* ((expr ($match.expr obj))
+         (clauses ($match.clauses obj))) 
+
+    (unless clauses 
+      (error "null clauses is not allowed"))
+  
+    ;;; 先にmatch-clauseの式の部分を推論しなければ
+    ;;; match に渡された式の型推論がうまくいかないはず
+   (loop 
+     named exit
+     with most-specific-type = nil
+     with renv = env
+     finally (return-from exit (values most-specific-type renv))
+     for clause in clauses
+     for expr-type = (typecheck expr renv)
+     for pattern = ($match-clause.pattern clause)
+     for pattern-env = (collect-var pattern)
+     for body    = ($match-clause.expr clause) 
+     do 
+     (multiple-value-bind 
+       (body-type new-env)
+       (typecheck body (append pattern-env renv))
+
+       (when most-specific-type 
+         (let ((rule (match body-type most-specific-type)))
+           (setf body-type (unify-type-with-rule body-type rule)
+                 new-env   (unify-env-with-rule new-env rule))))
+
+       (let* ((pattern-type (typecheck pattern (unify-env-with-env pattern-env new-env)))
+              (rule (match expr-type pattern-type)))
+
+         (setf renv 
+               (unify-env-with-rule 
+                 (set-difference new-env pattern-env :key #'car :test #'string=) 
+                 rule)
+               most-specific-type
+               (unify-type-with-rule body-type rule)))))))
 
 
 

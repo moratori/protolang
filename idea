@@ -1,0 +1,141 @@
+
+type List a = Nil<> | Cons<a,(List a)>
+
+def length(l) -> 
+  match l
+    Nil<> => 0
+    Cons<x,xs> => 1 + length[xs]
+
+length[Cons<1,Cons<2,Nil>>]
+
+Cons<x,xs>のところでx,xsにすでに束縛があったとしても
+x,xsの値を見るわけじゃなくて局所的な束縛を作る
+
+コンストラクタ、ユーザ定義型の識別子の先頭は大文字
+0引数コンストラクタの<>を取り除きたい(リーダレベルの話)
+
+
+type Gender = Male<> | Female<>
+type Person = Person<Gender,Integer,String>
+type List a = Nil<> | Cons<a,(List a)>
+
+def sumallage[ps] -> 
+  match ps 
+    Nil<> => 0
+    Cons<x,xs> => 
+      match x
+        Person<a,b,c> => b + summallage[xs]
+
+summallage : (List Person) -> Integer
+
+Cons<1,Nil<>>
+
+
+Person<Male,21,"ozaki">
+Cons<1,Cons<2,Nil<>>>
+Cons<1,Cons<"s",Nil>>
+((a . Integer))
+((a . String))
+(())
+
+type List a = Nil | Cons a (List a)
+
+match l with
+  Cons<1,Nil> -> "(1)"
+  Cons<3,xs>  -> "(3 ...)"
+  Cons<x,xs>  -> "unknown"
+  Nil -> "empty"
+
+Cons a (List a) と Cons<3,xs>をmatch
+3 : Integer
+xs : tundef
+
+(match Integer a) a -> Integer
+(match tundef  (List a))  tundef -> (List a)
+
+def length(l) -> 
+  match l
+    Nil<> => 0
+    Cons<x,xs> => x+1 + length[xs]
+
+type List a = Nil | Cons a (List a)
+
+def test(l) -> 
+  match l with
+    Nil<> => 0
+    Cons<x,Nil<>> => 1
+    Cons<x,xs>  => x
+
+(List a) Integer
+(List a) Integer
+(List a) UNDEF
+("l" . undef)
+
+def test[l]  -> 
+  match l with
+    Cons<x,Nil<>> => Tuple<x,1>
+    Cons<x,Cons<y,xs>> => Tuple<x,y>
+    Cons<x,xs> => Tuple<5,x>
+
+type List a = Nil | Cons a (List a)
+Cons[a,(List a)]
+Cons[t1,Cons[t2,t3]]
+
+Cons<y,xs>
+(List a)
+
+(List a)
+
+
+(List a)
+
+
+Tuple[type1  , Integer]
+Tuple[type2  , type3]
+Tuple[Integer , type4]
+
+T[type0 -> type4,Integer]
+T[type1 -> Bool,Integer]
+T[Integer -> type2,type3]
+ 
+
+
+------------------------------------------------------------------
+*match式に於いてすべき検査
+match EXPR with CLAUSE1 CLAUSE2 ...
+ ・EXPRの型の判定(各CLAUSEnのコンストラクタと、式部分より)
+ ・全てのCLAUSEのパターン部が同じ型のオブジェクトを作る
+   値コンストラクタであるかの判定
+ ・各CLAUSEnが返す値が全て同じ型であるかの判定
+-----------------------------------------------------------------------
+
+
+(List a)
+(match Integer a): (a . Integer)
+(match ())
+
+
+
+(List Integer) -> Integer
+
+(List Integer)
+
+def fuzzy-length(l) ->
+  match l with 
+    Nil => 0
+    Cons<x,xs> => 1 + x + length(xs)
+
+(List a) -> Integer
+
+((x . A)(xs . B))
+(match A a): (A . a)
+(match B (List a)): (B . (List a))
+(x . a)
+(xs . (List a)) 
+
+l: %t1
+l: (List %a)
+x: %t2
+xs: %t3
+%t2 -> 
+
