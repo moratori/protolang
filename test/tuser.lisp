@@ -174,6 +174,16 @@
         ($userobj "Cons" (list ($var "x") ($var "xs")))
         ($var "x")))))
 
+  (check ($match
+    ($userobj "Cons" (list ($userobj "Just" (list ($integer "1"))) ($userobj "Nil" nil)))
+    (list 
+      ($match-clause
+        ($userobj "Nil" nil)
+        ($integer "1"))
+      ($match-clause
+        ($userobj "Cons" (list ($userobj "Just" (list ($var "x"))) ($var "xs")))
+        ($var "x")))))
+
   
   )
 
