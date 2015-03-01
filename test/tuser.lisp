@@ -163,13 +163,16 @@
                            ($var "x"))
                          ($match-clause 
                            ($userobj "Nothing" nil)
-                           ($var "default")
-                           )
-                         )
-                       )
-               )
-          )
-    )
+                           ($var "default")))))))
+  (check ($match
+    ($userobj "Cons" (list ($userobj "Just" (list ($integer "1"))) ($userobj "Nil" nil)))
+    (list 
+      ($match-clause
+        ($userobj "Nil" nil)
+        ($userobj "Nothing" nil))
+      ($match-clause
+        ($userobj "Cons" (list ($var "x") ($var "xs")))
+        ($var "x")))))
 
   
   )

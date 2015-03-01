@@ -65,6 +65,14 @@
         (substype x old new)) 
       ($tuser.args target))))
 
+(defmethod substype ((target $typecons) old new)
+  ($typecons 
+    ($typecons.ident target)
+    (mapcar 
+      (lambda (each)
+        (substype each old new))
+      ($typecons.args target))))
+
 
 @export
 (defgeneric typecheck (obj env)
@@ -618,9 +626,20 @@
 (defmethod typecheck ((obj $makenewtype) env)
   (let ((newtype      ($makenewtype.newtype obj))
         (constructors ($makenewtype.constructors obj)))
-    (loop for each in constructors 
-          do (push (cons each newtype) *user-defined-type*))
-    (values newtype env)))
+    (multiple-value-bind 
+      (newnewtype rule)
+      (rename newtype)
+      "type List a = Cons a (List a) | Nilと
+       type Maybe a = Just a | Nothing
+       みたいな型変数が複数のところで出てくる定義があると
+       match式がエラー吐く原因になるので一意な型変数になるように
+       renameをする"
+      (loop for each in constructors 
+            do 
+            (push 
+              (cons (unify-type-with-rule each rule) newnewtype) *user-defined-type*))
+
+      (values newnewtype env))))
 
 
 (defun lookup-userdefined-type (userobj)
@@ -631,6 +650,22 @@
          :key  #'$typecons.ident 
          :test #'string=))
 
+
+
+
+(defun rename (obj)
+  (assert (typep obj '$tuser))
+  (let* ((args ($tuser.args obj))
+         (rule
+           (remove-duplicates
+             (loop for each in args
+                   if (typep each '$tundef)
+                   collect (cons each ($tundef)))
+             :test #'type=
+             :key #'car)))  
+    (values 
+      (unify-type-with-rule obj rule)
+      rule)))
 
 
 (defmethod typecheck ((obj $userobj) env)
@@ -663,10 +698,11 @@
                    (setf now new)
                    (match sc ty)))))) 
 
-
         (values 
           (unify-type-with-rule tuser typemaching)
-          (unify-env-with-rule now typemaching))))))
+          (unify-env-with-rule now typemaching)))
+
+      )))
 
 
 
@@ -797,15 +833,25 @@
            (setf body-type (unify-type-with-rule body-type rule)
                  new-env   (unify-env-with-rule new-env rule))))
 
+
+
        (let* ((pattern-type (typecheck pattern (unify-env-with-env pattern-env new-env)))
-              (rule (match expr-type pattern-type)))
+              (rule 
+                (handler-case
+                  (match expr-type pattern-type)
+                  (t (c) 
+                    (/ 1 0)
+                    )
+                  )))
 
          (setf renv 
                (unify-env-with-rule 
                  (set-difference new-env pattern-env :key #'car :test #'string=) 
                  rule)
                most-specific-type
-               (unify-type-with-rule body-type rule)))))))
+               (unify-type-with-rule body-type rule))
+         
+         )))))
 
 
 
